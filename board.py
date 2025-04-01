@@ -200,13 +200,12 @@ class Board:
                 total_value += square.get_state().value * (control_multiplier if square.get_piece() is None else (control_multiplier+attack_bonus))
         return total_value
 
-    def update_evaluation(self):
-        self.evaluation = self.evaluate(self.eval_set)
-        print(f"BOARD: Evaluation = {self.evaluation}")
+    def update_evaluation(self, eval_set: EvaluateSet, describe=False):
+        self.evaluation = self.evaluate(eval_set, describe=describe)
         return self.evaluation
 
     def is_mated(self):
-        return abs(self.evaluation) >= 100
+        return abs(self.evaluation) >= 10000
 
     def update_control_state(self, color:Color, attacks: List[Vector]):
         for attack in attacks:
@@ -235,20 +234,24 @@ class Board:
     def print_visual(self, prespective: Color = Color.RED):
         line = " ╔"
         for i in range(9):
-            line += "═╤═"
+            line += "═══"
         line += "╗"
         print(line)
         
         for i in range(10):
             vert = i if prespective==Color.BLACK else (9-i)
             line = str(vert)
-            line += "╟"
+            line += "║"
             for j in range(9):
                 print_piece = self.squares[j][vert].get_piece()
-                if i == 4:
+                if i in (4,9):
                     between = "┴"
-                elif i == 5:
+                elif i in (5, 0):
                     between = "┬"
+                elif j == 0:
+                    between = "├"
+                elif j == 8:
+                    between = "┤"
                 else:
                     between = "┼"
                 if print_piece:
@@ -256,12 +259,14 @@ class Board:
                     line += textcolors.red if print_piece.get_color()==Color.RED else textcolors.green
                     line += print_piece.get_name() + textcolors.endc + " "
                 else:
-                    line += "─" + between + "─"
-            line += "╢"
+                    line += "─" if j > 0 else " "
+                    line += between
+                    line += "─" if j < 8 else " " 
+            line += "║"
             print(line)
         line = " ╚"
         for i in range(9):
-            line += "═╧═"
+            line += "═══"
         line += "╝"
         print(line)
         line = "   "

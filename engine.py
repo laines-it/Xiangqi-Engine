@@ -16,7 +16,6 @@ class Engine:
         beta = math.inf
         
         pieces = board.get_reds() if current_player == Color.RED else board.get_blacks()
-        
         for piece in pieces:
             from_pos = piece.get_position()
             valid_moves = board.get_piece_valid_moves(piece, check=True)

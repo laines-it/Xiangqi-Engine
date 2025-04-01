@@ -58,7 +58,7 @@ class Piece:
 class General(Piece):
     def __init__(self, color: Color, position: Vector):
         move = Move([Vector(1, 0), Vector(-1, 0), Vector(0, 1), Vector(0, -1)])
-        super().__init__(color, position, move, 'G', attacking=False, value=200)
+        super().__init__(color, position, move, 'G', attacking=False, value=10000)
 
     def get_area(self):
         return RED_PALACE_AREA if self.color==Color.RED else BLACK_PALACE_AREA
