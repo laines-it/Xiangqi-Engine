@@ -13,6 +13,7 @@ class Square:
     def reset_attacks(self):
         self.red_attacks = 0
         self.black_attacks = 0
+        self.state = Square_status.neutral
 
     def add_attack(self, color: Color):
         if color == Color.RED:
@@ -89,6 +90,11 @@ class Board:
     # returns the square of piece, giving check
     # if is not in check, returns None
     def is_in_check(self, color: Color) -> Optional[Square]:
+        gen_red = self.reds[0]
+        gen_black = self.blacks[0]
+        x = gen_red.get_position().getX()
+        if (x == gen_black.get_position().getX()) and self.empty_between_general(x, gen_red.get_position().getY(), gen_black.get_position().getY()):
+            return gen_red if color == Color.BLACK else gen_black
         opponent_pieces = self.reds if color == Color.BLACK else self.blacks
         palace = RED_PALACE_AREA if color == Color.RED else BLACK_PALACE_AREA
         attackers = [attacker for attacker in opponent_pieces if attacker.is_attacker()]
@@ -100,6 +106,12 @@ class Board:
                     return attacker.get_position()
         return None
     
+    def empty_between_general(self, x, y1, y2):
+        for j in range(y1+1, y2):
+            if self.squares[x][j].get_piece():
+                return False
+        return True
+
     def get_attackers(self, color: Color) -> List[Piece]:
         return [piece for piece in (self.reds if color == Color.RED else self.blacks) if piece.is_attacker()]
     
@@ -125,7 +137,7 @@ class Board:
         self.move_piece(to_pos, from_pos, taken)
         return result
 
-    def get_piece_valid_moves(self, piece: Piece, check=True):
+    def get_piece_valid_moves(self, piece: Piece, check=True, for_eval=False):
         valid_moves = []
 
         if piece.can_modify() and (not piece.is_modified()):
@@ -146,9 +158,9 @@ class Board:
                 target_square = self.get_square(position, area=piece.get_area())
                 if target_square is None:
                     break
-                if target_square.get_piece() is not None:
+                if target_square.get_piece():
                     if (not piece.need_screen()) or has_screen:
-                        if target_square.get_piece().get_color() != piece.get_color():
+                        if for_eval or target_square.get_piece().get_color() != piece.get_color():
                             if check:
                                 threat = self.ghost_test(piece.get_position(), position, lambda xxx: xxx.is_in_check(piece.get_color()))
                                 if threat is not None:
@@ -159,14 +171,13 @@ class Board:
                         break
                     else:
                         has_screen = True
-                elif not has_screen:
+                elif (has_screen == piece.need_screen()) if for_eval else (not has_screen):
                     if check:
                         threat = self.ghost_test(piece.get_position(), position, lambda xxx: xxx.is_in_check(piece.get_color()))
-                        if threat is not None:
-                            if self.debug:
-                                print(f"Move by {piece} to {position} causes mate by {threat}")
-                            break
-                    valid_moves.append(position)
+                        if threat is None:
+                            valid_moves.append(position)
+                        elif self.debug:
+                            print(f"Move by {piece} to {position} causes mate by {threat}")
 
         if piece.can_modify() and piece.is_modified():
             piece.set_default()
@@ -186,18 +197,22 @@ class Board:
             team_values = team_attack_bonus = team_mobility = 0
             for piece in team:
                 team_values += piece.get_value() * value_multiplier
-                team_attack_bonus += attack_bonus if piece.is_attacker() else 0
-                vds = self.get_piece_valid_moves(piece, check=False)
-                team_mobility += len(vds)* mobility_multiplier
-                self.update_control_state(piece.get_color(), vds)
-            if describe:
-                print(f"BOARD: {piece.get_color().name} values = {team_values}")
-                print(f"BOARD: {piece.get_color().name} attack bonus = {team_attack_bonus}")
-                print(f"BOARD: {piece.get_color().name} mobility = {team_mobility}")
+                if attack_bonus:
+                    team_attack_bonus += attack_bonus if piece.is_attacker() else 0
+                if mobility_multiplier:
+                    vds = self.get_piece_valid_moves(piece, check=False, for_eval=True)
+                    team_mobility += len(vds)* mobility_multiplier
+                    self.update_control_state(piece.get_color(), vds)
+                if describe:
+                    #print(f"BOARD Evaluating: for {piece} valid moves {vds}")
+                    print(f"BOARD: {piece.get_color().name} values = {team_values}")
+                    print(f"BOARD: {piece.get_color().name} attack bonus = {team_attack_bonus}")
+                    print(f"BOARD: {piece.get_color().name} mobility = {team_mobility}")
             total_value += (team_values + team_attack_bonus + team_mobility) * ((-1) if i else 1)
-        for rows in self.squares:
-            for square in rows:
-                total_value += square.get_state().value * (control_multiplier if square.get_piece() is None else (control_multiplier+attack_bonus))
+        if control_multiplier:
+            for rows in self.squares:
+                for square in rows:
+                    total_value += square.get_state().value * (control_multiplier if square.get_piece() is None else (control_multiplier+attack_bonus))
         return total_value
 
     def update_evaluation(self, eval_set: EvaluateSet, describe=False):
@@ -274,4 +289,24 @@ class Board:
             line += str(i) + "  "
         print(line)
         print()
+    
+    def print_control(self, prespective: Color = Color.RED):
+        for i in range(10):
+            line = ""
+            for j in range(9):
+                vert = i if prespective==Color.BLACK else (9-i)
+                state = self.squares[j][vert].get_state()
+                color = textcolors.lightgrey
+                if state==Square_status.red:
+                    color = textcolors.red
+                elif state==Square_status.black:
+                    color = textcolors.green
+                s = "██"
+                if i == 5:
+                    s = "▄▄"
+                elif i == 4:
+                    s = "▀▀"
+                line += color
+                line += s + textcolors.endc
+            print(line)
         

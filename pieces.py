@@ -89,7 +89,7 @@ class Horse(Piece):
     def __init__(self, color: Color, position: Vector):
         move = Move([Vector(2, 1), Vector(2, -1), Vector(-2, 1), Vector(-2, -1), Vector(1, 2),
                      Vector(1, -2), Vector(-1, 2), Vector(-1, -2)], bigstep=True)
-        super().__init__(color, position, move, 'H', attacking=True, value=3.5)
+        super().__init__(color, position, move, 'H', attacking=True, value=4)
     
     def get_max_steps(self):
         return 1
@@ -108,7 +108,7 @@ class Elephant(Piece):
 class Cannon(Piece):
     def __init__(self, color: Color, position: Vector):
         move = Move([Vector(1, 0), Vector(-1, 0), Vector(0, 1), Vector(0, -1)])
-        super().__init__(color, position, move, 'C', attacking=True, value=3.5)
+        super().__init__(color, position, move, 'C', attacking=True, value=4.5)
     
     def get_max_steps(self):
         return 10

@@ -3,15 +3,16 @@ import math
 from board import Board
 from pieces import Piece
 from supports import EvaluateSet, Vector, Color
+import random
 
 class Engine:
-    def __init__(self, depth: int = 3, debug: bool = False):
+    def __init__(self, eval_set:EvaluateSet, depth: int = 3, debug: bool = False):
         self.debug = debug
         self.depth = depth
-        self.eval_set = EvaluateSet(2, 0.1, 0.01, 0.1)
+        self.eval_set = eval_set
 
     def get_best_move(self, board: Board, current_player: Color) -> Optional[Tuple[Vector, Vector]]:
-        best_move = None
+        best_moves = []
         alpha = -math.inf
         beta = math.inf
         
@@ -30,17 +31,32 @@ class Engine:
                         alpha=alpha,
                         beta=beta,
                         maximizing_player=(current_player == Color.RED))
-
+                if self.debug:
+                    print(f"ENGINE EVALUATION: {current_player.opposite()} can get {move_value}")
                 if current_player == Color.RED and move_value > alpha:
+                    ratio = (move_value / alpha) if alpha else 2
+                    if 1.05 > ratio > 1:
+                        best_moves.append((from_pos, to_pos))
+                    else:
+                        best_moves = [(from_pos, to_pos)]
                     alpha = move_value
-                    best_move = (from_pos, to_pos)
-                elif current_player == Color.BLACK and move_value < beta:
+                elif current_player == Color.BLACK and beta > move_value:
+                    ratio = (beta / move_value) if move_value else 2
+                    if 1.05 > ratio > 1:
+                        best_moves.append((from_pos, to_pos))
+                    else:
+                        best_moves = [(from_pos, to_pos)]
                     beta = move_value
-                    best_move = (from_pos, to_pos)
-                if alpha >= beta:
-                    break
         
-        return best_move
+        return self.handle_gameover(board, current_player) if best_moves == [] else random.choice(best_moves)
+
+    def handle_gameover(self, board: Board, color: Color):
+        board.debug = True
+        team = board.get_reds() if color == Color.RED else board.get_blacks()
+        for piece in team:
+            vds = board.get_piece_valid_moves(piece, check=True)
+            print(f"ENGINE GAMEOVER: {piece} valid moves = {vds}")
+        return None
 
     def minimax(self, 
                board: Board,
@@ -62,9 +78,9 @@ class Engine:
         
         if depth == 1:
             evaluate = board.evaluate(self.eval_set)
-            if self.debug:
-                print(f"ENGINE WRAPPER: Evaluation = {evaluate}")
-                board.print_visual()
+            # if self.debug:
+                # print(f"ENGINE WRAPPER: Evaluation = {evaluate}")
+                # board.print_visual()
             return evaluate
 
         extreme_value = -math.inf if maximizing_player else math.inf
@@ -73,8 +89,6 @@ class Engine:
         for piece in pieces:
             valid_moves = board.get_piece_valid_moves(piece, check=True)
             for move in valid_moves:
-                if self.debug:
-                    print(f"ENGINE WRAPPER depth={depth}: evaluating {piece} to {move}")
                 current_value = self.minimax(
                     board=board,
                     from_pos=piece.get_position(),

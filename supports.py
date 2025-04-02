@@ -68,7 +68,7 @@ class Move:
 
 class EvaluateSet:
     
-    def __init__(self, value_multiplier=2, attack_bonus=1, mobility_multiplier=1, control_multiplier=1):
+    def __init__(self, value_multiplier=10, attack_bonus=1, mobility_multiplier=1, control_multiplier=1):
         self.value_multiplier = value_multiplier
         self.attack_bonus = attack_bonus
         self.mobility_multiplier = mobility_multiplier

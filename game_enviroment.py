@@ -10,9 +10,10 @@ class Game:
     def __init__(self, load=False, debug=False):
         self.debug = debug
         self.board = Board(debug=debug)
-        self.engine = Engine(depth=3, debug=debug)
         self.selected_piece: Optional['Piece'] = None
         self.logs = open("game_log.txt", "w")
+        self.eval_set = EvaluateSet(1,0,0,0)
+        self.engine = Engine(self.eval_set, depth=5, debug=debug)        
         if load:
             self.load_board()
             self.load_current_color()
@@ -54,7 +55,7 @@ class Game:
             print(f"GAME trying to select on {position}: No piece or incorrect color")
         return False
 
-    def make_move(self, new_position: Vector, number:int, check=False):
+    def make_move(self, new_position: Vector, check=True):
         if self.selected_piece is None:
             print(f"GAME trying to move to {new_position}: Please select a piece")
             return False
@@ -64,7 +65,7 @@ class Game:
         if new_position in valid_moves:
             self.board.move_piece(self.selected_piece.get_position(), new_position)
             print(f"GAME: moving {self.selected_piece}")
-            self.logs.write(f"MOVE {number}: {self.current_player_color.name} {self.selected_piece.get_name()} to {self.selected_piece.get_position()}\n")
+            self.logs.write(f"MOVE: {self.current_player_color.name} {self.selected_piece.get_name()} to {self.selected_piece.get_position()}\n")
             self.current_player_color = Color.BLACK if self.current_player_color == Color.RED else Color.RED
             self.selected_piece = None
             return True
@@ -76,7 +77,7 @@ class Game:
         return self.board.is_mated()
 
     def evaluate(self):
-        return self.board.update_evaluation(EvaluateSet(10,0.1,0.01,0.01), describe=False)
+        return self.board.update_evaluation(self.eval_set, describe=False)
 
     def engine_best_move(self):
         return self.engine.get_best_move(self.board, self.current_player_color)
@@ -86,9 +87,9 @@ class Game:
 
     #prints the board in console
     def print(self):
-        #print evaluation 0.2f
         print(f"Evaluation: {self.evaluate():.2f}")
         print(f"{self.current_player_color} to move")
+        #self.board.print_control()
         return self.board.print_visual()
 
     def save_board(self):
@@ -123,10 +124,29 @@ class Game:
             self.current_player_color = Color.RED
             return False
 
+    def openning_general_sight(self):
+        self.select_piece(Vector(4,3))
+        self.make_move(Vector(4,4))
+        self.select_piece(Vector(4,6))
+        self.make_move(Vector(4,5))
+        self.select_piece(Vector(4,4))
+        self.make_move(Vector(4,5))
+        self.select_piece(Vector(4,9))
+        self.make_move(Vector(4,8))
+        self.select_piece(Vector(4,5))
+        self.make_move(Vector(5,5))
+        self.select_piece(Vector(5,0))
+        self.make_move(Vector(4,1))
+        self.select_piece(Vector(4,8))
+        self.make_move(Vector(5,8))
+        self.select_piece(Vector(4,0))
+        self.make_move(Vector(5,0))
+
 g = Game(load=False, debug=False)
 g.print()
 i = 0
 while True:
+    #input()
     print("MOVE", i // 2)
     best_move = g.engine_best_move()
     if best_move is None:
@@ -135,6 +155,6 @@ while True:
         break
     from_pos, to_pos = best_move
     g.select_piece(from_pos)
-    g.make_move(to_pos, i//2)
+    g.make_move(to_pos)
     g.print()
     i += 1
