@@ -1,5 +1,5 @@
-from pieces import Piece, General
-from typing import List, Optional, Callable
+from pieces import Piece, General, Soldier
+from typing import List, Optional, Callable, Tuple
 from supports import Vector, Color, textcolors, FULLBOARD_AREA, RED_PALACE_AREA, BLACK_PALACE_AREA, EvaluateSet, Square_status
 
 class Square:
@@ -56,6 +56,9 @@ class Board:
     def __init__(self, debug=False):
         self.squares = [[Square(Vector(x, y)) for y in range(10)] for x in range(9)]
         self.evaluation = 0
+        self.history = []
+        self.uncapturing_moves_count = 0
+        self.save_UMC = self.uncapturing_moves_count
         self.reds = []
         self.blacks = []
         self.debug = debug
@@ -87,14 +90,38 @@ class Board:
             return None
         return self.squares[position.x][position.y]
 
+    def get_uncapturing_moves_count(self):
+        return self.uncapturing_moves_count
+
     # returns the square of piece, giving check
     # if is not in check, returns None
-    def is_in_check(self, color: Color) -> Optional[Square]:
-        gen_red = self.reds[0]
-        gen_black = self.blacks[0]
-        x = gen_red.get_position().getX()
-        if (x == gen_black.get_position().getX()) and self.empty_between_general(x, gen_red.get_position().getY(), gen_black.get_position().getY()):
-            return gen_red if color == Color.BLACK else gen_black
+    def is_in_check(self, color: Color):
+        #General sight
+        gen_red = None
+        gen_black = None
+        for piece in self.reds:
+            if isinstance(piece, General):
+                gen_red = piece
+        for piece in self.blacks:
+            if isinstance(piece, General):
+                gen_black = piece
+        if gen_black and gen_red:
+            x = gen_red.get_position().getX()
+            if (x == gen_black.get_position().getX()) and self.empty_between_general(x, gen_red.get_position().getY(), gen_black.get_position().getY()):
+                return (gen_red, Vector(x,10)) if color == Color.BLACK else (gen_black, Vector(x,10))
+        
+        #Move repeatition
+        # 3-time repetition causes mate
+        if len(self.history) >= 15:
+            repeated3 = True
+            for i in range(1,4):
+                if self.history[-i] != self.history[-i-4]:
+                    repeated3 = False
+                    break
+            if repeated3:
+                return (self.get_square(self.history[-1][0]).get_piece(), self.history[-1])
+
+        #Checks
         opponent_pieces = self.reds if color == Color.BLACK else self.blacks
         palace = RED_PALACE_AREA if color == Color.RED else BLACK_PALACE_AREA
         attackers = [attacker for attacker in opponent_pieces if attacker.is_attacker()]
@@ -103,8 +130,9 @@ class Board:
             for move in attackers_valid_moves:
                 square = self.get_square(move, area=palace)
                 if square and square.piece and isinstance(square.piece, General):
-                    return attacker.get_position()
-        return None
+                    return (attacker, move)
+        
+        return (None,None)
     
     def empty_between_general(self, x, y1, y2):
         for j in range(y1+1, y2):
@@ -115,7 +143,7 @@ class Board:
     def get_attackers(self, color: Color) -> List[Piece]:
         return [piece for piece in (self.reds if color == Color.RED else self.blacks) if piece.is_attacker()]
     
-    def move_piece(self, from_pos: Vector, to_pos: Vector, set_instead : Optional['Piece'] = None):
+    def move_piece(self, from_pos: Vector, to_pos: Vector, set_instead : Optional['Piece'] = None, returning = False):
         old_square = self.squares[from_pos.getX()][from_pos.getY()]
         the_piece = old_square.get_piece()
         if the_piece is None:
@@ -123,18 +151,32 @@ class Board:
         the_piece.set_position(to_pos)
         taken = self.squares[to_pos.getX()][to_pos.getY()].set_piece(the_piece)
         if taken is not None:
+            #capturing
             self.remove_piece(taken)
+            self.save_UMC = self.uncapturing_moves_count
+            self.uncapturing_moves_count = 0
+        else:
+            self.uncapturing_moves_count += 1
 
-        old_square.remove_piece()    
+        old_square.remove_piece()
+
+        if returning:
+            self.history.pop()
+            self.uncapturing_moves_count -= 2
+        else:
+            self.history.append([from_pos, to_pos])
 
         if set_instead is not None:
+            #set captured => cancel capturing
             self.add_piece(set_instead)
+            self.uncapturing_moves_count = self.save_UMC
+
         return taken
 
     def ghost_test(self, from_pos:Vector, to_pos:Vector, func: Callable):
         taken = self.move_piece(from_pos, to_pos)
         result = func(self)
-        self.move_piece(to_pos, from_pos, taken)
+        self.move_piece(to_pos, from_pos, set_instead=taken, returning=True)
         return result
 
     def get_piece_valid_moves(self, piece: Piece, check=True, for_eval=False):
@@ -162,22 +204,26 @@ class Board:
                     if (not piece.need_screen()) or has_screen:
                         if for_eval or target_square.get_piece().get_color() != piece.get_color():
                             if check:
-                                threat = self.ghost_test(piece.get_position(), position, lambda xxx: xxx.is_in_check(piece.get_color()))
+                                threat, killer_move = self.ghost_test(piece.get_position(), position,
+                                                                      lambda xxx: xxx.is_in_check(piece.get_color()))
                                 if threat is not None:
                                     if self.debug:
-                                        print(f"Move by {piece} to {position} causes mate by {threat}")
-                                    break
+                                        print(f"Move by {piece} to {position} causes mate by {threat} with {killer_move}")
+                                    break     
                             valid_moves.append(position)
                         break
                     else:
                         has_screen = True
                 elif (has_screen == piece.need_screen()) if for_eval else (not has_screen):
                     if check:
-                        threat = self.ghost_test(piece.get_position(), position, lambda xxx: xxx.is_in_check(piece.get_color()))
+                        threat, killer_move = self.ghost_test(piece.get_position(), position,
+                                                              lambda xxx: xxx.is_in_check(piece.get_color()))
                         if threat is None:
                             valid_moves.append(position)
                         elif self.debug:
-                            print(f"Move by {piece} to {position} causes mate by {threat}")
+                            print(f"BOT Move by {piece} to {position} causes mate by {threat} with {killer_move}")
+                    else:
+                        valid_moves.append(position)
 
         if piece.can_modify() and piece.is_modified():
             piece.set_default()
@@ -190,6 +236,8 @@ class Board:
         return bool(sq) and bool(sq.get_piece())
 
     def evaluate(self, eval_set: EvaluateSet, describe=False) -> float:
+        if self.uncapturing_moves_count > 49:
+            return 0
         total_value = 0
         self.reset_control_state()
         value_multiplier, attack_bonus, mobility_multiplier, control_multiplier = eval_set.get()
@@ -200,8 +248,9 @@ class Board:
                 if attack_bonus:
                     team_attack_bonus += attack_bonus if piece.is_attacker() else 0
                 if mobility_multiplier:
-                    vds = self.get_piece_valid_moves(piece, check=False, for_eval=True)
+                    vds = self.get_piece_valid_moves(piece, check=True, for_eval=True)
                     team_mobility += len(vds)* mobility_multiplier
+                if control_multiplier:
                     self.update_control_state(piece.get_color(), vds)
                 if describe:
                     #print(f"BOARD Evaluating: for {piece} valid moves {vds}")
@@ -218,9 +267,6 @@ class Board:
     def update_evaluation(self, eval_set: EvaluateSet, describe=False):
         self.evaluation = self.evaluate(eval_set, describe=describe)
         return self.evaluation
-
-    def is_mated(self):
-        return abs(self.evaluation) >= 10000
 
     def update_control_state(self, color:Color, attacks: List[Vector]):
         for attack in attacks:

@@ -85,8 +85,8 @@ class Square_status(Enum):
     black = -1
 
 class Color(Enum):
-    RED = 'r'
-    BLACK = 'b'
+    RED = 'RED'
+    BLACK = 'BLACK'
 
     def opposite(self):
         return Color.RED if self == Color.BLACK else Color.BLACK

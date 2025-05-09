@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Xiangqi Game</title>
+    <style>
+        :root {
+            --cell-size: 60px;
+            --palace-border: 3px;
+            --piece-size: calc(var(--cell-size) * 0.7);
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f5f5dc;
+            padding: 20px;
+        }
+        
+        .board-container {
+            position: relative;
+            width: calc(var(--cell-size) * 8);
+            height: calc(var(--cell-size) * 9);
+            background-color: #e8c887;
+            border: 3px solid #8B4513;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Grid lines */
+        .horizontal-line {
+            position: absolute;
+            width: 100%;
+            border-top: 1px solid #000;
+            left: 0;
+        }
+
+        .vertical-line {
+            position: absolute;
+            height: calc(var(--cell-size) * 4);
+            border-left: 1px solid #000;
+            top: 0;
+        }
+
+        .vertical-line.bottom {
+            top: calc(var(--cell-size) * 5);
+            height: calc(var(--cell-size) * 5);
+        }
+
+        /* Palaces */
+        .palace {
+            position: absolute;
+            width: calc(var(--cell-size) * 2 - var(--palace-border));
+            height: calc(var(--cell-size) * 2 - var(--palace-border));
+            border: var(--palace-border) solid #8B4513;
+        }
+
+        .palace::before, .palace::after {
+            content: '';
+            position: absolute;
+            width: calc(var(--cell-size) * 2* 1.4);
+            height: 1px;
+            background: #000;
+            transform-origin: left center;
+        }
+
+        .palace::before {
+            transform: rotate(45deg);
+            top: 0;
+            left: 0;
+        }
+
+        .palace::after {
+            transform: rotate(-45deg);
+            bottom: 0;
+            left: 0;
+        }
+
+        .piece {
+            position: absolute;
+            width: var(--piece-size);
+            height: var(--piece-size);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: calc(var(--piece-size) * 0.6);
+            font-weight: bold;
+            cursor: pointer;
+            transform: translate(-50%, -50%);
+            z-index: 2;
+            background: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+
+        .RED { color: #d00; border: 2px solid #d00; }
+        .BLACK { color: #000; border: 2px solid #000; }
+
+        .possible-move {
+            position: absolute;
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: rgba(0, 255, 0, 0.2);
+            border-radius: 50%;
+            pointer-events: none;
+            transform: translate(-50%, -50%);
+        }
+
+        .evaluation-bar {
+            width: 300px;
+            height: 30px;
+            background: linear-gradient(to right, red 0%, rgb(255, 0, 0) 0%, black 100%);
+            margin: 20px;
+            position: relative;
+            border: 2px solid #333;
+        }
+
+        .evaluation-marker {
+            position: absolute;
+            width: 4px;
+            height: 100%;
+            background: #000;
+            left: 50%;
+            transform: translateX(-50%);
+            transition: left 0.3s ease;
+        }
+
+        .controls {
+            margin: 20px;
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background: #8B4513;
+            color: white;
+            border: none;
+            border-radius: 5px;
+        }
+        .last-move {
+            position: absolute;
+            width: var(--cell-size);
+            height: var(--cell-size);
+            background-color: rgba(255, 255, 0, 0.3);
+            pointer-events: none;
+        }
+        .last-move-end {
+            background-color: rgba(0, 255, 0, 0.3);
+        }
+        .controls button {
+            margin: 5px;
+        }
+        .status {
+            margin: 10px;
+            font-weight: bold;
+        }
+
+        .game-container {
+            display: flex;
+            gap: 20px;
+            align-items: flex-start;
+        }
+        
+        .log-container {
+            width: 300px;
+            height: calc(var(--cell-size) * 9);
+            background-color: #f8f8f8;
+            border: 2px solid #8B4513;
+            padding: 10px;
+            overflow-y: auto;
+            font-family: monospace;
+            box-shadow: 0 0 5px rgba(0,0,0,0.2);
+        }
+
+        .log-entry {
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #ddd;
+        }
+        
+        .log-time {
+            color: #666;
+            font-size: 0.8em;
+        }
+        
+        .log-message {
+            margin-top: 3px;
+        }
+        
+        .log-move {
+            color: #0066cc;
+        }
+
+        .log-select {
+            color: #009900;
+        }
+        
+        .log-error {
+            color: #cc0000;
+        }
+        
+        .log-status {
+            color: #8B4513;
+            font-weight: bold;
+        }
+
+    </style>
+</head>
+<body>
+    <h1>Xiangqi (Chinese Chess)</h1>
+    <div class="status" id="status">Match not started</div>
+    <div class="controls">
+        <button id="startButton" onclick="startMatch()">Start Match</button>
+        <button onclick="callFoo()">Call Foo</button>
+    </div>
+     <div class="game-container">
+        <div class="board-container" id="board-container">
+            <div class="river">楚河 汉界</div>
+            <div class="palace" style="top: calc(var(--cell-size) * 0); left: calc(var(--cell-size) * 3);"></div>
+            <div class="palace" style="top: calc(var(--cell-size) * 7); left: calc(var(--cell-size) * 3);"></div>
+        </div>
+        
+        <div class="log-container" id="logContainer">
+            <div class="log-entry">
+                <div class="log-time" id="current-time"></div>
+                <div class="log-message log-status">Game initialized</div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="evaluation-bar">
+        <div class="evaluation-marker" id="evaluation-marker"></div>
+    </div>
+
+    <script>
+        let cellSize = 60;
+        let selectedPiece = null;
+        let possibleMoves = [];
+        let matchInProgress = false;
+        let updateInterval;
+        function createGrid() {
+            const container = document.getElementById('board-container');
+            
+            // Horizontal lines
+            for (let i = 0; i < 9; i++) {
+                const line = document.createElement('div');
+                line.className = 'horizontal-line';
+                line.style.top = `${i * cellSize}px`;
+                container.appendChild(line);
+            }
+
+            // Vertical lines (split for river)
+            for (let i = 0; i < 8; i++) {
+                const lineTop = document.createElement('div');
+                lineTop.className = 'vertical-line';
+                lineTop.style.left = `${i * cellSize}px`;
+                lineTop.style.height = `${4 * cellSize}px`;
+                container.appendChild(lineTop);
+
+                const lineBottom = document.createElement('div');
+                lineBottom.className = 'vertical-line bottom';
+                lineBottom.style.left = `${i * cellSize}px`;
+                lineBottom.style.height = `${4 * cellSize}px`;
+                container.appendChild(lineBottom);
+            }
+        }
+
+        async function callFoo() {
+            await fetch('/call_foo');
+            updateBoard();
+        }
+
+        function getPieceSymbol(type, color) {
+            const symbols = {
+                    'RED': {
+                        'General': '帥',
+                        'Advisor': '仕',
+                        'Elephant': '相',
+                        'Horse': '傌',
+                        'Chariot': '俥',
+                        'Cannon': '炮',
+                        'Soldier': '兵'
+                    },
+                    'BLACK': {
+                        'General': '將',
+                        'Advisor': '士',
+                        'Elephant': '象',
+                        'Horse': '馬',
+                        'Chariot': '車',
+                        'Cannon': '砲',
+                        'Soldier': '卒'
+                    }
+                };
+                return symbols[color][type];
+        }
+
+        function addLog(message, type = 'info') {
+            const logContainer = document.getElementById('logContainer');
+            const now = new Date();
+            const timeString = now.toLocaleTimeString();
+            document.getElementById('current-time').textContent = timeString;
+            
+            const logEntry = document.createElement('div');
+            logEntry.className = 'log-entry';
+            
+            const timeElement = document.createElement('div');
+            timeElement.className = 'log-time';
+            timeElement.textContent = timeString;
+            
+            const messageElement = document.createElement('div');
+            messageElement.className = `log-message log-${type}`;
+            messageElement.textContent = message;
+
+            logEntry.appendChild(timeElement);
+            logEntry.appendChild(messageElement);
+            logContainer.appendChild(logEntry);
+            
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        async function updateBoard() {
+            try {
+                const response = await fetch('/get_board');
+                const data = await response.json();
+
+                const statusMessage = data.match_in_progress ? 
+                    `Match in progress (${data.current_player}'s turn)` : 
+                    'Match not started';
+                document.getElementById('status').textContent = statusMessage;
+                
+                const startButton = document.getElementById('startButton');
+                startButton.disabled = data.match_in_progress;
+                startButton.textContent = data.match_in_progress ? 
+                    'Match in progress' : 'Start Match';
+                
+                document.querySelectorAll('.piece, .last-move, .possible-move').forEach(p => p.remove());
+                
+                data.board.forEach((row, y) => row.forEach((piece, x) => {
+                    if (!piece) return;
+                    
+                    const elem = document.createElement('div');
+                    elem.className = `piece ${piece.color}`;
+                    elem.style.left = `${x * cellSize}px`;
+                    elem.style.top = `${y * cellSize}px`;
+                    elem.textContent = getPieceSymbol(piece.type, piece.color);
+                    elem.onclick = () => handlePieceClick(x, y);
+                    if (data.selected_piece?.position.x === x && data.selected_piece?.position.y === y) {
+                        elem.style.boxShadow = '0 0 10px 3px rgba(0,255,0,0.7)';
+                    }
+                    document.getElementById('board-container').appendChild(elem);
+                }));
+
+                if (selectedPiece) {
+                    const response = await fetch('/get_possible_moves', {
+                        method: 'POST',
+                        headers: {'Content-Type': 'application/json'},
+                        body: JSON.stringify(selectedPiece)
+                    });
+                    const movesData = await response.json();
+                    
+                    if (movesData.success) {
+                        possibleMoves = movesData.possible_moves;
+                        possibleMoves.forEach(move => {
+                            const highlight = document.createElement('div');
+                            highlight.className = 'possible-move';
+                            highlight.style.left = `${move.x * cellSize}px`;
+                            highlight.style.top = `${move.y * cellSize}px`;
+                            document.getElementById('board-container').appendChild(highlight);
+                        });
+                    }
+                }
+                
+                const evalResponse = await fetch('/evaluate');
+                const evaluation = await evalResponse.json();
+                const marker = document.getElementById('evaluation-marker');
+                marker.style.left = `${50 + (evaluation.value * 50)}%`;
+
+            }catch(error){
+                addLog(`Error updating board: ${error.message}`, 'error');
+            }
+        }
+        
+        async function handlePieceClick(x, y) {
+            if (!matchInProgress) {
+                addLog("Cannot make move - match not started", "error");
+                return;
+            }
+
+            const isPossibleMove = possibleMoves.some(move => move.x === x && move.y === y);
+
+            if(selectedPiece && isPossibleMove) {
+                const response = await fetch('/make_move', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({x, y})
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    addLog(`Move made from (${selectedPiece.x},${selectedPiece.y}) to (${x},${y})`, 'move');
+                }else{
+                    addLog(`Invalid move to (${x},${y}): ${result.message || 'Unknown error'}`, 'error');
+                }
+                selectedPiece = null;
+                possibleMoves = [];
+            }else{
+                const response = await fetch('/select_piece', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({x, y})
+                });
+                const result = await response.json();
+                
+                if (result.success) {
+                    selectedPiece = {x, y};
+                    addLog(`Piece selected at (${x},${y})`, 'select');
+                }else{
+                    addLog(`Invalid selection at (${x},${y}): ${result.message || 'Unknown error'}`, 'error');
+                }
+            }
+            updateBoard();
+        }
+
+        async function startMatch(){
+            try{
+                const response = await fetch('/start_match', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'}
+                });
+                const result = await response.json();
+                if (result.success) {
+                    matchInProgress = true;
+                    addLog("Match started!", 'status');
+                    clearInterval(updateInterval);
+                    updateInterval = setInterval(updateBoard, 5000);
+                } else {
+                    addLog(`Failed to start match: ${result.message || 'Unknown error'}`, 'error');
+                }
+                updateBoard();
+            } catch (error) {
+                addLog(`Error starting match: ${error.message}`, 'error');
+            }
+        }
+
+        createGrid();
+        updateBoard();
+    </script>
+</body>
+</html>

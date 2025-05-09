@@ -7,19 +7,30 @@ from pieces import Chariot, Horse, Elephant, Advisor, General, Cannon, Soldier
 from engine import Engine
 
 class Game:
-    def __init__(self, load=False, debug=False):
+    def __init__(self, eval_set:EvaluateSet, puzzle = 0, load=False, debug=False):
         self.debug = debug
         self.board = Board(debug=debug)
         self.selected_piece: Optional['Piece'] = None
+        self.last_move = (None, None)
         self.logs = open("game_log.txt", "w")
-        self.eval_set = EvaluateSet(1,0,0,0)
-        self.engine = Engine(self.eval_set, depth=5, debug=debug)        
+        self.eval_set = eval_set     
         if load:
             self.load_board()
             self.load_current_color()
         else:
-            self.initialize_pieces()
-            self.current_player_color = Color.RED
+            if puzzle == 1:
+                self.puzzle()
+                self.current_player_color = Color.RED
+                self.print()
+            else:
+                self.initialize_pieces()
+                self.current_player_color = Color.RED
+
+    def is_50moves_rule(self):
+        return self.board.get_uncapturing_moves_count() >= 50
+
+    def get_all(self):
+        return self.board, self.last_move, self.selected_piece, self.current_player_color
 
     def initialize_pieces(self):
         for i,color in enumerate(Color):
@@ -33,6 +44,16 @@ class Game:
             self.board.add_piece(Cannon(color, Vector(7, 2 + 5*i)))
         if self.debug:
             print("GAME: Board initialized successfully")
+        return self.board
+
+    def puzzle(self):
+        self.board.add_piece(General(Color.RED, Vector(4,0)))
+        self.board.add_piece(General(Color.BLACK, Vector(3,9)))
+        self.board.add_piece(Soldier(Color.RED, Vector(4,8)))
+        self.board.add_piece(Elephant(Color.BLACK, Vector(6,9)))
+        # self.board.add_piece(Elephant(Color.BLACK, Vector(4,7)))
+        self.board.add_piece(Chariot(Color.RED, Vector(7,3)))
+        # self.board.add_piece(Soldier(Color.BLACK, Vector(2,4)))
         return self.board
 
     def create_queue(self):
@@ -59,13 +80,16 @@ class Game:
         if self.selected_piece is None:
             print(f"GAME trying to move to {new_position}: Please select a piece")
             return False
-        valid_moves = self.board.get_piece_valid_moves(self.selected_piece, check=check)
-        if self.debug:
-            print(f"Valid moves: {valid_moves}")
-        if new_position in valid_moves:
+        if check:
+            valid_moves = self.board.get_piece_valid_moves(self.selected_piece, check=check)
+            if self.debug:
+                print(f"Valid moves: {valid_moves}")
+        if (not check) or (new_position in valid_moves):
             self.board.move_piece(self.selected_piece.get_position(), new_position)
             print(f"GAME: moving {self.selected_piece}")
             self.logs.write(f"MOVE: {self.current_player_color.name} {self.selected_piece.get_name()} to {self.selected_piece.get_position()}\n")
+            print(f"GAME: uncaptured: {self.board.get_uncapturing_moves_count()}")
+            self.last_move = (self.selected_piece.get_position(), new_position)
             self.current_player_color = Color.BLACK if self.current_player_color == Color.RED else Color.RED
             self.selected_piece = None
             return True
@@ -73,20 +97,19 @@ class Game:
             print(f"Move {self.selected_piece} to {new_position} is invalid")
             return False
 
-    def is_mated(self):
-        return self.board.is_mated()
-
     def evaluate(self):
         return self.board.update_evaluation(self.eval_set, describe=False)
 
-    def engine_best_move(self):
-        return self.engine.get_best_move(self.board, self.current_player_color)
+    def engine_best_move(self, engine:Engine):
+        return engine.get_best_move(self.board, self.current_player_color)
 
     def print_pieces(self):
         self.board.print_pieces()
 
     #prints the board in console
-    def print(self):
+    def print(self, deep_eval=None):
+        if deep_eval:
+            print(f"Deep evaluation: {deep_eval:.2f}")
         print(f"Evaluation: {self.evaluate():.2f}")
         print(f"{self.current_player_color} to move")
         #self.board.print_control()
@@ -100,6 +123,9 @@ class Game:
             pickle.dump(self.current_player_color, f)
         self.logs.close()
         print("Board saved successfully")
+
+    def get_last_move(self):
+        return self.last_move
 
     def load_board(self):
         try:
@@ -125,36 +151,81 @@ class Game:
             return False
 
     def openning_general_sight(self):
+        self.print()
         self.select_piece(Vector(4,3))
         self.make_move(Vector(4,4))
         self.select_piece(Vector(4,6))
         self.make_move(Vector(4,5))
+        self.print()
         self.select_piece(Vector(4,4))
         self.make_move(Vector(4,5))
         self.select_piece(Vector(4,9))
         self.make_move(Vector(4,8))
+        self.print()
         self.select_piece(Vector(4,5))
         self.make_move(Vector(5,5))
         self.select_piece(Vector(5,0))
         self.make_move(Vector(4,1))
+        self.print()
         self.select_piece(Vector(4,8))
         self.make_move(Vector(5,8))
+        self.select_piece(Vector(8,0))
+        self.make_move(Vector(8,1))
+        self.print()
+        self.select_piece(Vector(5,8))
+        self.make_move(Vector(4,8))
         self.select_piece(Vector(4,0))
         self.make_move(Vector(5,0))
+        self.print()
+        
+        #black first
+        self.select_piece(Vector(4,8))
+        self.make_move(Vector(4,7))
+        self.select_piece(Vector(5,0))
+        self.make_move(Vector(4,0))
+        self.print()
+        self.select_piece(Vector(4,7))
+        self.make_move(Vector(4,8))
+        self.select_piece(Vector(4,0))
+        self.make_move(Vector(5,0))
+        self.print()
+        
+        self.select_piece(Vector(4,8))
+        self.make_move(Vector(4,7))
+        self.select_piece(Vector(5,0))
+        self.make_move(Vector(4,0))
+        self.print()
+        self.select_piece(Vector(4,7))
+        self.make_move(Vector(4,8))
+        self.select_piece(Vector(4,0))
+        self.make_move(Vector(5,0))
+        self.print()
 
-g = Game(load=False, debug=False)
-g.print()
-i = 0
-while True:
-    #input()
-    print("MOVE", i // 2)
-    best_move = g.engine_best_move()
-    if best_move is None:
-        print(f"PLAYER {g.current_player_color.opposite()} WON")
-        g.save_board()
-        break
-    from_pos, to_pos = best_move
-    g.select_piece(from_pos)
-    g.make_move(to_pos)
-    g.print()
-    i += 1
+        self.select_piece(Vector(4,8))
+        self.make_move(Vector(4,7))
+        self.select_piece(Vector(5,0))
+        self.make_move(Vector(4,0))
+        self.print()
+        self.select_piece(Vector(4,7))
+        self.make_move(Vector(4,8))
+        self.select_piece(Vector(4,0))
+        self.make_move(Vector(5,0))
+        self.print()
+        
+        self.select_piece(Vector(4,8))
+        self.make_move(Vector(4,7))
+        self.select_piece(Vector(5,0))
+        self.make_move(Vector(4,0))
+        self.print()
+        self.select_piece(Vector(4,7))
+        self.make_move(Vector(4,8))
+        self.select_piece(Vector(4,0))
+        self.make_move(Vector(5,0))
+        self.print()
+
+if __name__ == "__main__":
+    ev = EvaluateSet(100,0,0,0)
+    g = Game(ev, puzzle=1, load=False, debug=False)
+    print(g.engine_best_move(Engine(ev,4,debug=True)))
+    # g.openning_general_sight()
+
