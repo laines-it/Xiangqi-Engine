@@ -24,19 +24,16 @@ class Engine:
             
             for to_pos in valid_moves:
                 target_square = board.get_square(to_pos)
-                is_capture = target_square.get_piece() is not None
-                
-                quick_eval = board.ghost_test(from_pos, to_pos, 
-                                            lambda b: b.evaluate(self.eval_set))
                 eval_bonus = 0
-                if is_capture:
-                    captured_piece = target_square.get_piece()
+                captured_piece = target_square.get_piece()
+
+                if captured_piece is not None:
                     eval_bonus += captured_piece.get_value() * 0.5
-                
-                if isinstance(piece, General):
+
+                if piece.is_attacker():
                     eval_bonus += 0.3
                 
-                moves.append((quick_eval + eval_bonus, from_pos, to_pos))
+                moves.append((eval_bonus, from_pos, to_pos))
         moves.sort(reverse=(current_player == Color.RED), key=lambda x: x[0])
 
         if len(moves):
