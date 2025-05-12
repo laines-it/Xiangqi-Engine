@@ -25,6 +25,8 @@ class GameInterface:
             self.game.print()
             current_player = self.red_player if self.game.current_player_color == Color.RED else self.black_player
             print(f"\nMOVE {i//2}:\n  {current_player.name}'s turn")
+            if len(self.game.board.get_attackers(self.game.current_player_color)) < 4:
+                current_player.add_depth(1)
             success = current_player.turn(self.game)
             if not success:
                 break
@@ -59,7 +61,7 @@ class GameInterface:
         human1 = Human(name="Alice", color=Color.RED, profile_url="https://example.com/alice")
         human2 = Human(name="PALICE", color=Color.BLACK, profile_url="https://example.com/alice")
     
-        bot_engine1 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=0, control_multiplier=0), depth=5)
+        bot_engine1 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=1, control_multiplier=1), depth=4)
         ai1 = Bot(
             engine=bot_engine1,
             color=Color.RED,
@@ -67,7 +69,7 @@ class GameInterface:
             strategy_description="Prefers attacking moves"
         )
 
-        bot_engine2 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=0, control_multiplier=0), depth=5)
+        bot_engine2 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=1, control_multiplier=1), depth=4)
         ai2 = Bot(
             engine=bot_engine2,
             name="Defensive AI",

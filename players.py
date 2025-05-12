@@ -38,6 +38,9 @@ class Player:
         elif result == "draw":
             self.stats["draws"] += 1
 
+    def add_depth(self, change):
+        pass
+
     def get_color(self):
         return self.color
 
@@ -108,6 +111,11 @@ class Bot(Player):
             "engine_depth": engine.depth,
             "strategy": strategy_description
         })
+
+    def add_depth(self, change):
+        new_depth = self.engine.depth + change
+        if new_depth <= 10:
+            self.engine.depth = new_depth
 
     def turn(self, game: Game) -> bool:
         my_eval, best_move = self.engine.get_best_move(game.board, self.color)
