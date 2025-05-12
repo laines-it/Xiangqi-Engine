@@ -1,6 +1,7 @@
 from pieces import Piece, General, Soldier
 from typing import List, Optional, Callable, Tuple
 from supports import Vector, Color, textcolors, FULLBOARD_AREA, RED_PALACE_AREA, BLACK_PALACE_AREA, EvaluateSet, Square_status
+from math import inf
 
 class Square:
     def __init__(self, position: Vector):
@@ -75,6 +76,9 @@ class Board:
         else:
             self.blacks.append(piece)
 
+    def history_by_index(self, index):
+        return self.history[-index]
+
     def remove_piece(self, piece: Optional['Piece']):
         if piece.color == Color.RED:
             self.reds.remove(piece)
@@ -109,17 +113,18 @@ class Board:
             x = gen_red.get_position().getX()
             if (x == gen_black.get_position().getX()) and self.empty_between_general(x, gen_red.get_position().getY(), gen_black.get_position().getY()):
                 return (gen_red, Vector(x,10)) if color == Color.BLACK else (gen_black, Vector(x,10))
-        
+
         #Move repeatition
         # 3-time repetition causes mate
-        if len(self.history) >= 15:
+        if len(self.history) > 5:
             repeated3 = True
             for i in range(1,4):
                 if self.history[-i] != self.history[-i-4]:
                     repeated3 = False
                     break
             if repeated3:
-                return (self.get_square(self.history[-1][0]).get_piece(), self.history[-1])
+                print("REPEATED")
+                return (self.get_square(self.history[-1][1]).get_piece(), self.history[-1])
 
         #Checks
         opponent_pieces = self.reds if color == Color.BLACK else self.blacks
@@ -133,7 +138,7 @@ class Board:
                     return (attacker, move)
         
         return (None,None)
-    
+
     def empty_between_general(self, x, y1, y2):
         for j in range(y1+1, y2):
             if self.squares[x][j].get_piece():
@@ -235,9 +240,27 @@ class Board:
         sq = self.get_square(position, area=FULLBOARD_AREA)
         return bool(sq) and bool(sq.get_piece())
 
-    def evaluate(self, eval_set: EvaluateSet, describe=False) -> float:
+    def is_mate(self):
+        mate = 3
+        for i,team in enumerate((self.reds, self.blacks)):
+            for piece in team:
+                if isinstance(piece, General):
+                    mate -= i+1
+                    break
+        if mate == 0:
+            return 0
+        elif mate == 1:
+            return -inf
+        else:
+            return inf
+
+
+    def evaluate(self, eval_set: EvaluateSet, describe=False):
         if self.uncapturing_moves_count > 49:
             return 0
+        res = self.is_mate()
+        if res:
+            return res 
         total_value = 0
         self.reset_control_state()
         value_multiplier, attack_bonus, mobility_multiplier, control_multiplier = eval_set.get()

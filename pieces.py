@@ -1,4 +1,4 @@
-import copy
+import math
 from typing import List, Optional, Callable
 from supports import *
 #from supports import FULLBOARD_AREA, RED_PALACE_AREA, RED_HALF, BLACK_PALACE_AREA, Move, Color, Vector, textcolors
@@ -58,7 +58,7 @@ class Piece:
 class General(Piece):
     def __init__(self, color: Color, position: Vector):
         move = Move([Vector(1, 0), Vector(-1, 0), Vector(0, 1), Vector(0, -1)])
-        super().__init__(color, position, move, 'G', attacking=False, value=10000)
+        super().__init__(color, position, move, 'G', attacking=False, value=100)
 
     def get_area(self):
         return RED_PALACE_AREA if self.color==Color.RED else BLACK_PALACE_AREA
@@ -108,7 +108,7 @@ class Elephant(Piece):
 class Cannon(Piece):
     def __init__(self, color: Color, position: Vector):
         move = Move([Vector(1, 0), Vector(-1, 0), Vector(0, 1), Vector(0, -1)])
-        super().__init__(color, position, move, 'C', attacking=True, value=4.5)
+        super().__init__(color, position, move, 'C', attacking=True, value=5)
     
     def get_max_steps(self):
         return 10

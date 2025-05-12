@@ -2,7 +2,7 @@ from game_enviroment import Game
 from players import Player, Human, Bot
 from engine import Engine
 from typing import Optional
-from supports import Color, EvaluateSet
+from supports import Color, EvaluateSet, GameResult
 
 class GameInterface:
     def __init__(self):
@@ -15,7 +15,7 @@ class GameInterface:
     def get_all_of_game(self):
         return self.game.get_all()
 
-    def start_match(self, auto_play: bool = True) -> None:
+    def start_game(self) -> GameResult:
         print(f"Starting match: {self.red_player.name} (RED) vs {self.black_player.name} (BLACK)")
         i = 1
         while True:
@@ -25,20 +25,32 @@ class GameInterface:
             self.game.print()
             current_player = self.red_player if self.game.current_player_color == Color.RED else self.black_player
             print(f"\nMOVE {i//2}:\n  {current_player.name}'s turn")
-            
             success = current_player.turn(self.game)
             if not success:
                 break
             if self.game.is_50moves_rule():
                 print("TIE")
-                break
+                return GameResult.tie
             i += 1
 
         self.game.save_board()
-        winner = self._determine_winner()
-        self.red_player.update_stats("win" if winner == Color.RED else "loss")
-        self.black_player.update_stats("win" if winner == Color.BLACK else "loss")
-        print(f"Match concluded. Winner: {winner}")
+        return GameResult.red_won if self._determine_winner() == Color.RED else GameResult.black_won
+
+    def start_match(self, best_of: int = 1):
+        red_wins = 0
+        black_wins = 0
+        ties = 0
+        while max(red_wins, black_wins) < best_of:
+            self.game = Game(eval_set=self.default_eval_set, load=False)
+            result = self.start_game()
+            if result == GameResult.red_won:
+                red_wins += 1
+            elif result == GameResult.black_won:
+                black_wins += 1
+            else:
+                ties += 1
+        winner = Color.RED if red_wins > black_wins else Color.BLACK
+        return winner, red_wins, black_wins, ties
 
     def _determine_winner(self) -> Color:
         return self.game.current_player_color.opposite()
@@ -47,7 +59,7 @@ class GameInterface:
         human1 = Human(name="Alice", color=Color.RED, profile_url="https://example.com/alice")
         human2 = Human(name="PALICE", color=Color.BLACK, profile_url="https://example.com/alice")
     
-        bot_engine1 = Engine(EvaluateSet(value_multiplier=10, attack_bonus=0, mobility_multiplier=0, control_multiplier=0), depth=6)
+        bot_engine1 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=0, control_multiplier=0), depth=5)
         ai1 = Bot(
             engine=bot_engine1,
             color=Color.RED,
@@ -55,7 +67,7 @@ class GameInterface:
             strategy_description="Prefers attacking moves"
         )
 
-        bot_engine2 = Engine(EvaluateSet(value_multiplier=10, attack_bonus=0, mobility_multiplier=0, control_multiplier=0), depth=6)
+        bot_engine2 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=0, control_multiplier=0), depth=5)
         ai2 = Bot(
             engine=bot_engine2,
             name="Defensive AI",
@@ -72,6 +84,5 @@ class GameInterface:
 if __name__ == "__main__":
     interface = GameInterface()
     interface.add_players(ai=True)
-    interface.start_match()
-
-    
+    # print(interface.start_match(best_of=))
+    interface.start_game()

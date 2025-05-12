@@ -91,6 +91,11 @@ class Color(Enum):
     def opposite(self):
         return Color.RED if self == Color.BLACK else Color.BLACK
 
+class GameResult(Enum):
+    tie = 0
+    red_won = 1
+    black_won = -1
+
 class textcolors:
     black = '\033[30m'
     red = '\033[31m'

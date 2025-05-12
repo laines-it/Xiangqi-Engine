@@ -48,12 +48,10 @@ class Game:
 
     def puzzle(self):
         self.board.add_piece(General(Color.RED, Vector(4,0)))
-        self.board.add_piece(General(Color.BLACK, Vector(3,9)))
-        self.board.add_piece(Soldier(Color.RED, Vector(4,8)))
-        self.board.add_piece(Elephant(Color.BLACK, Vector(6,9)))
-        # self.board.add_piece(Elephant(Color.BLACK, Vector(4,7)))
-        self.board.add_piece(Chariot(Color.RED, Vector(7,3)))
-        # self.board.add_piece(Soldier(Color.BLACK, Vector(2,4)))
+        self.board.add_piece(General(Color.BLACK, Vector(5,9)))
+        self.board.add_piece(Soldier(Color.RED, Vector(4,7)))
+        self.board.add_piece(Soldier(Color.RED, Vector(3,9)))
+        # self.board.add_piece(Chariot(Color.RED, Vector(5,2)))
         return self.board
 
     def create_queue(self):
@@ -224,8 +222,6 @@ class Game:
         self.print()
 
 if __name__ == "__main__":
-    ev = EvaluateSet(100,0,0,0)
+    ev = EvaluateSet(10,0,0,0)
     g = Game(ev, puzzle=1, load=False, debug=False)
     print(g.engine_best_move(Engine(ev,4,debug=True)))
-    # g.openning_general_sight()
-

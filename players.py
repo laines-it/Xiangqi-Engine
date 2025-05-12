@@ -38,6 +38,18 @@ class Player:
         elif result == "draw":
             self.stats["draws"] += 1
 
+    def get_color(self):
+        return self.color
+
+    def set_color(self, color):
+        self.color = color
+
+    def swap_colors(self, other):
+        c = self.color
+        self.color = other.get_color()
+        other.set_color(c)
+        return self.color
+
 class Human(Player):
     """Human player class with interactive input."""
     def __init__(

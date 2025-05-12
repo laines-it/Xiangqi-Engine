@@ -12,13 +12,10 @@ class Engine:
         self.eval_set = eval_set
 
     def get_best_move(self, board: Board, current_player: Color, is_random:bool = False) -> Optional[Tuple[Vector, Vector]]:
-        if is_random:
-            best_moves = []
-        else:
-            best_move = None
         alpha = -math.inf
         beta = math.inf
-
+        if is_random:
+            best_moves = []
         pieces = board.get_reds() if current_player == Color.RED else board.get_blacks()
         moves = []
         for piece in pieces:
@@ -41,6 +38,12 @@ class Engine:
                 
                 moves.append((quick_eval + eval_bonus, from_pos, to_pos))
         moves.sort(reverse=(current_player == Color.RED), key=lambda x: x[0])
+
+        if len(moves):
+            best_move = (moves[0][1], moves[0][2])
+        else:
+            best_move = None
+
         for move in moves:
             bonus, from_pos, to_pos = move
 
@@ -62,7 +65,7 @@ class Engine:
                 print(f"ENGINE EVALUATION for {current_player.name} after {from_pos}->{to_pos}: {current_player.opposite().name} can get {move_value}")
                 print("=============================================================================================================================")
                 print()
-            
+
             if current_player == Color.RED and move_value > alpha:
                 if is_random and ((move_value / alpha) if alpha else 2) < 1.05:
                     best_moves.append((from_pos, to_pos))
@@ -70,12 +73,16 @@ class Engine:
                     best_move = (from_pos, to_pos)
                 alpha = move_value
                 
-            elif beta > move_value:
+            elif current_player == Color.BLACK and beta > move_value:
                 if is_random and ((beta / move_value) if move_value else 2) < 1.05:
                     best_moves.append((from_pos, to_pos))
                 else:
                     best_move = (from_pos, to_pos)
                 beta = move_value
+                
+                if abs(move_value) == math.inf:
+                    print("FOUND CHECKMATE")
+                    break
     
         move_value = alpha if current_player==Color.RED else beta
         if is_random:
@@ -133,7 +140,7 @@ class Engine:
                 if self.debug:
                     print("--------------------------------------" * depth)
                     print(f"MINIMAX {debcolor} with {piece.get_position()}->{move}")
-
+                    print(f"            depth={depth}, alpha={alpha}, beta={beta}")
                 current_value = self.minimax(
                     board=board,
                     from_pos=piece.get_position(),
