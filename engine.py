@@ -71,6 +71,8 @@ class Engine:
                     best_moves.append((from_pos, to_pos))
                 else:
                     best_move = (from_pos, to_pos)
+                if move_value == math.inf:
+                    break
                 alpha = move_value
                 
             elif current_player == Color.BLACK and beta > move_value:
@@ -78,11 +80,9 @@ class Engine:
                     best_moves.append((from_pos, to_pos))
                 else:
                     best_move = (from_pos, to_pos)
-                beta = move_value
-                
-                if abs(move_value) == math.inf:
-                    print("FOUND CHECKMATE")
+                if move_value == math.inf:
                     break
+                beta = move_value
     
         move_value = alpha if current_player==Color.RED else beta
         if is_random:
