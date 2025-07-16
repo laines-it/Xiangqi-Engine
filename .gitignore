@@ -2,6 +2,7 @@
 tournaments/test.py
 tournaments/tmp.py
 tournaments/api.py
+tournaments/.env
 game_logic/clang/
 game_logic/test.py
 game_logic/test.txt

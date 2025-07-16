@@ -3,11 +3,17 @@ from psycopg2 import sql
 from psycopg2.extras import DictCursor
 import os
 
-from config import Role, ADMIN, connention_parameters
+from config import Role, ADMIN
 
 class Database:
     def __init__(self):
-        self.conn_params = connention_parameters
+        self.conn_params = {
+            'dbname': os.environ['DB_NAME'],
+            'user': os.environ['DB_USER'],
+            'password': os.environ['DB_PASSWORD'],
+            'host': os.environ['DB_HOST'],
+            'port': os.environ['DB_PORT']
+        }
         self.init_db()
 
     def init_db(self):

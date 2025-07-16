@@ -8,12 +8,12 @@ from database import Database
 from managers import TnmtManager, UserManager, PlayerManager
 from config import Role, Status
 
+from dotenv import load_dotenv
+load_dotenv()
+
 app = Flask(__name__)
 
-def generate_secret_key():
-    return os.urandom(24).hex()
-
-app.secret_key = os.environ.get('FLASK_SECRET_KEY') or generate_secret_key()
+app.secret_key = os.environ['FLASK_SECRET_KEY']
 
 db = Database()
 tm = TnmtManager(db)
