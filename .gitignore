@@ -2,7 +2,6 @@
 tournaments/test.py
 tournaments/tmp.py
 tournaments/api.py
-tournaments/.env
 game_logic/clang/
 game_logic/test.py
 game_logic/test.txt
@@ -10,7 +9,7 @@ game_logic/game_log.txt
 game_logic/app.py
 
 #Config
-tournaments/config.py
+tournaments/.env
 tournaments/data.csv
 tournaments/tournaments.db
 

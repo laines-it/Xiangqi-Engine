@@ -3,11 +3,11 @@ from psycopg2 import sql
 from psycopg2.extras import DictCursor
 import os
 
-from config import Role, ADMIN
+from config import Role
 
 class Database:
     def __init__(self):
-        self.DATABASE_URL = os.getenv('DATABASE_URL')
+        self.DATABASE_URL = os.environ.get('DATABASE_URL')
         self.init_db()
 
     def init_db(self):
@@ -61,12 +61,10 @@ class Database:
                 c.execute("CREATE INDEX IF NOT EXISTS idx_tournament_status ON tournaments(status)")
                 c.execute("CREATE INDEX IF NOT EXISTS idx_player_rating ON players(rating DESC)")
 
-                admin_username, admin_password = ADMIN
-
                 c.execute('''INSERT INTO users (username, password, role) 
                             VALUES (%s, %s, %s)
                             ON CONFLICT (username) DO NOTHING''', 
-                        (admin_username, admin_password, Role.admin.value))
+                        (os.environ.get('ADMIN_NAME'), os.environ.get('ADMIN_PASSWORD_HEX'), Role.admin.value))
 
                 conn.commit()
 
