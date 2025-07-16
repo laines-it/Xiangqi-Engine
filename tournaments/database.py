@@ -1,102 +1,92 @@
-import sqlite3
-from functools import wraps
+import psycopg2
+from psycopg2 import sql
+from psycopg2.extras import DictCursor
+import os
 
-from config import Role, ADMIN, DATABASE
+from config import Role, ADMIN, connention_parameters
 
 class Database:
     def __init__(self):
-        self.name = DATABASE
+        self.conn_params = connention_parameters
         self.init_db()
 
     def init_db(self):
-        conn = sqlite3.connect(self.name)
-        conn.row_factory = sqlite3.Row
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS users (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    username TEXT UNIQUE NOT NULL,
-                    password TEXT NOT NULL,
-                    role TEXT NOT NULL,
-                    email TEXT)''')
-    
-        c.execute('''CREATE TABLE IF NOT EXISTS players ( 
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    user_id INTEGER,
-                    name TEXT UNIQUE NOT NULL,
-                    rating INTEGER DEFAULT 1000,
-                    FOREIGN KEY(user_id) REFERENCES users(id))''')
+        with self.connect() as conn:
+            with conn.cursor() as c:
+                c.execute('''CREATE TABLE IF NOT EXISTS users (
+                            id SERIAL PRIMARY KEY,
+                            username VARCHAR(50) UNIQUE NOT NULL,
+                            password VARCHAR(128) NOT NULL,
+                            role VARCHAR(20) NOT NULL,
+                            email VARCHAR(255))''')
+                                        
+                c.execute('''CREATE TABLE IF NOT EXISTS players ( 
+                                id SERIAL PRIMARY KEY,
+                                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                                name VARCHAR(100) UNIQUE NOT NULL,
+                                rating INTEGER NOT NULL DEFAULT 1000 CHECK (rating >= 0))''')
 
-        c.execute('''CREATE TABLE IF NOT EXISTS tournaments (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    admin_id INTEGER NOT NULL,
-                    name TEXT NOT NULL,
-                    date TIMESTAMP NOT NULL,
-                    status TEXT DEFAULT 'upcoming',
-                    total_rounds INTEGER NOT NULL,
-                    current_round INTEGER DEFAULT 0,
-                    FOREIGN KEY(admin_id) REFERENCES users(id))''')
+                c.execute('''CREATE TABLE IF NOT EXISTS tournaments (
+                                id SERIAL PRIMARY KEY,
+                                admin_id INTEGER NOT NULL REFERENCES users(id),
+                                name VARCHAR(100) NOT NULL,
+                                date TIMESTAMPTZ NOT NULL,
+                                status VARCHAR(20) NOT NULL DEFAULT 'upcoming',
+                                total_rounds SMALLINT NOT NULL CHECK (total_rounds > 0),
+                                current_round SMALLINT NOT NULL DEFAULT 0 CHECK (current_round >= 0),
+                                CONSTRAINT valid_status CHECK (status IN ('upcoming', 'ongoing', 'finished')))''')
 
-        c.execute('''CREATE TABLE IF NOT EXISTS tournament_players (
-                    tournament_id INTEGER,
-                    player_id INTEGER,
-                    points REAL DEFAULT 0,
-                    color_balance INTEGER DEFAULT 0,
-                    PRIMARY KEY (tournament_id, player_id),
-                    FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
-                    FOREIGN KEY(player_id) REFERENCES players(id) ON DELETE SET NULL)''')
+                c.execute('''CREATE TABLE IF NOT EXISTS tournament_players (
+                                tournament_id INTEGER REFERENCES tournaments(id) ON DELETE CASCADE,
+                                player_id INTEGER REFERENCES players(id) ON DELETE CASCADE,
+                                points REAL NOT NULL DEFAULT 0 CHECK (points >= 0),
+                                color_balance SMALLINT NOT NULL DEFAULT 0,
+                                PRIMARY KEY (tournament_id, player_id))''')
 
-        c.execute('''CREATE TABLE IF NOT EXISTS matches (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    tournament_id INTEGER,
-                    round INTEGER,
-                    player1_id INTEGER,
-                    player2_id INTEGER,
-                    result TEXT DEFAULT 'pending',
-                    player1_color TEXT,
-                    CHECK(result IN ('1-0', '0-1', '1/2-1/2', 'pending')),
-                    CHECK(player1_color IN ('red', 'black')),
-                    FOREIGN KEY(tournament_id) REFERENCES tournaments(id) ON DELETE CASCADE,
-                    FOREIGN KEY(player1_id) REFERENCES players(id) ON DELETE SET NULL,
-                    FOREIGN KEY(player2_id) REFERENCES players(id) ON DELETE SET NULL)''')
-        
-        c.execute("CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id)")
-        c.execute("CREATE INDEX IF NOT EXISTS idx_matches_players ON matches(player1_id, player2_id)")
+                c.execute('''CREATE TABLE IF NOT EXISTS matches (
+                                id SERIAL PRIMARY KEY,
+                                tournament_id INTEGER NOT NULL REFERENCES tournaments(id) ON DELETE CASCADE,
+                                round SMALLINT NOT NULL CHECK (round > 0),
+                                player1_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
+                                player2_id INTEGER REFERENCES players(id) ON DELETE SET NULL,
+                                result VARCHAR(8) NOT NULL DEFAULT 'pending',
+                                player1_color VARCHAR(10) NOT NULL,
+                                CONSTRAINT valid_result CHECK (result IN ('1-0', '0-1', '1/2-1/2', 'pending')),
+                                CONSTRAINT valid_color CHECK (player1_color IN ('red', 'black')),
+                                CONSTRAINT no_self_match CHECK (player1_id != player2_id))''')
+                                
+                c.execute("CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_matches_player1 ON matches(player1_id)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_matches_player2 ON matches(player2_id)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_tournament_status ON tournaments(status)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_player_rating ON players(rating DESC)")
 
-        admin_username, admin_password = ADMIN
+                admin_username, admin_password = ADMIN
 
-        c.execute("SELECT id FROM users WHERE username=?", (admin_username,))
-        admin_exists = c.fetchone()
-
-        if not admin_exists:
-            c.execute("INSERT INTO users (username, password, role) VALUES (?, ?, ?)", 
+                c.execute('''INSERT INTO users (username, password, role) 
+                            VALUES (%s, %s, %s)
+                            ON CONFLICT (username) DO NOTHING''', 
                         (admin_username, admin_password, Role.admin.value))
 
-        conn.commit()
-        conn.close()
+                conn.commit()
 
     def connect(self):
-        conn = sqlite3.connect(DATABASE)
-        conn.row_factory = sqlite3.Row
-        return conn
+        return psycopg2.connect(**self.conn_params, cursor_factory=DictCursor)
 
     def execute_query(self, query, params=(), fetchone=False, fetchall=False, commit=False):
-        conn = self.connect()
-        c = conn.cursor()
-        c.execute(query, params)
-
-        result = None
-        if fetchone:
-            result = c.fetchone()
-        elif fetchall:
-            result = c.fetchall()
-        
-        if commit:
-            if "INSERT" in query:
-                result = c.lastrowid
-            conn.commit()
-        
-        
-        conn.close()
+        with self.connect() as conn:
+            with conn.cursor() as c:
+                c.execute(query, params)
+                result = None
+                if fetchone:
+                    result = c.fetchone()
+                elif fetchall:
+                    result = c.fetchall()
+                
+                if commit or "INSERT" in query:
+                    conn.commit()
+                    if "RETURNING id" in query:
+                        result = c.fetchone()[0]
         return result
     
     def process_query(self, func, query, params=(), limit=0):
@@ -123,77 +113,3 @@ class Database:
         conn = self.connect()
         conn.commit()
         conn.close()
-
-    # def get_tournaments(self, conn : sqlite3.Connection):
-    #     rows = conn.execute(
-    #         "SELECT id, name, date_created, status FROM tournaments ORDER BY date_created DESC"
-    #     ).fetchall()
-    #     return rows
-
-    # def get_players(self, conn : sqlite3.Connection):
-    #     rows = conn.execute(
-    #         "SELECT id, name, rating FROM players ORDER BY rating DESC"
-    #     ).fetchall()
-    #     return rows
-
-    # def row_to_namedtuple(row, tuple_type : Data):
-    #     return tuple_type(**{field: row[field] for field in tuple_type._fields})
-
-    # @connect
-    # def get_tournament_stats(tournament, conn : sqlite3.Connection = None):
-    #     stats = []
-
-    #     player_count = conn.execute(
-    #         "SELECT COUNT(*) FROM tournament_players WHERE tournament_id=?",
-    #         (tournament.id,)
-    #     ).fetchone()[0]
-        
-    #     match_count = conn.execute(
-    #         "SELECT COUNT(*) FROM matches WHERE tournament_id=?",
-    #         (tournament.id,)
-    #     ).fetchone()[0]
-
-    #     stats.append({
-    #         'id': tournament.id,
-    #         'player_count': player_count,
-    #         'match_count': match_count
-    #     })
-
-    #     return stats
-    
-    # @connect
-    # def get_user(name, password, conn : sqlite3.Connection = None):
-    #     user = conn.cursor().execute("SELECT id, username, role FROM users WHERE username=? AND password=?", 
-    #               (name, password)).fetchone()
-    #     return user
-    
-    # @connect
-    # def new_user(username, hashed_password, conn : sqlite3.Connection = None):
-    #     try:
-    #         conn.cursor().execute("INSERT INTO users (username, password) VALUES (?, ?)", 
-    #                     (username, hashed_password))
-    #         conn.commit()
-    #         return Status.ok
-    #     except sqlite3.IntegrityError:
-    #         return Status.failed
-    
-    # @connect
-    # def new_tournament(username, hashed_password, conn : sqlite3.Connection):
-    #     try:
-    #         conn.cursor().execute("INSERT INTO users (username, password) VALUES (?, ?)", 
-    #                     (username, hashed_password))
-    #         conn.commit()
-    #         return Status.ok
-    #     except sqlite3.IntegrityError:
-    #         return Status.failed
-    
-    # @connect
-    # def add_player_to_tournament(tournament_id, player_id, conn : sqlite3.Connection):
-    #     c = conn.cursor()
-    #     try:
-    #         c.execute("INSERT OR IGNORE INTO tournament_players VALUES (?, ?)", 
-    #                 (tournament_id, player_id))
-    #         conn.commit()
-    #         return Status.ok
-    #     except:
-    #         return Status.failed

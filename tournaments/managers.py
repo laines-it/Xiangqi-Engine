@@ -9,17 +9,18 @@ class UserManager:
 
     def get_user(self, name, password):
         query = '''SELECT u.id, u.username, u.role, u.email,
-                          json_group_array(t.id)
-                FROM users u
-                LEFT JOIN tournaments t
-                ON u.id = t.admin_id
-                WHERE u.username=? AND u.password=?
+                          json_agg(t.id)
+                    FROM users u
+                    LEFT JOIN tournaments t
+                    ON u.id = t.admin_id
+                    WHERE u.username=%s AND u.password=%s
+                    GROUP BY u.id, u.username, u.role, u.email
                 '''
         packed = self.db.process_query(self.parse, query, params=(name, password), limit=1)
         return packed[0] if packed else None
     
     def new_user(self, username, password, role : Role):
-        query = "INSERT INTO users (username, password, role) VALUES (?, ?, ?)"
+        query = "INSERT INTO users (username, password, role) VALUES (%s, %s, %s) RETURNING id"
         try:
             id = self.db.execute_query(query, (username, password, role.value), commit=True)
             print(f"USER {username}, id={id} ADDED with Role {role}")
@@ -44,14 +45,14 @@ class PlayerManager:
                 FROM users u
                 LEFT JOIN tournaments t
                 ON u.id = t.admin_id
-                WHERE u.username=? AND u.password=?
+                WHERE u.username=%s AND u.password=%s
                 '''
         packed = self.db.process_query(self.parse, query, params=(name, password), limit=1)
         return packed[0] if packed else None
 
     def get_player_id(self, name):
         query = '''SELECT p.id
-                   WHERE p.name=?
+                   WHERE p.name=%s
                 '''
         row = self.db.execute_query(query, (name), fetchone=True)
         return row[0] if row else None
@@ -63,7 +64,7 @@ class PlayerManager:
                     FROM players p
                     JOIN tournament_players tp
                     ON p.id = tp.player_id
-                    WHERE p.id=?
+                    WHERE p.id=%s
                 '''
         packed = self.db.process_query(self.parse_tnmt, query, params=(id,), limit=1)
         return packed[0] if packed else None
@@ -81,17 +82,17 @@ class PlayerManager:
         p = TnmtPlayer(id=row[0],
                     user_id=row[1],name=row[2],rating=row[3],
                     tnmt_id=row[4],points=row[5],color_balance=row[6],
-                    opponents=json.loads(row[7]) if row[7] else [])
+                    opponents=row[7])
         return p
     
     def new_player(self, name, rating):
-        query = "INSERT INTO players (name, rating) VALUES (?, ?)"
+        query = "INSERT INTO players (name, rating) VALUES (%s, %s) RETURNING id"
         id = self.db.execute_query(query, (name, rating), commit=True)
         print(f"ADDED PLAYER {name},{rating}. id = {id}")
         return id
 
     def delete_player(self, player_id):
-        query = "DELETE FROM players WHERE id=?"
+        query = "DELETE FROM players WHERE id=%s"
         try:
             self.db.execute_query(query, (player_id,), commit=True)
             return Status.ok
@@ -104,16 +105,16 @@ class TnmtManager:
         self.tnmts = []
 
     def create(self, name, admin_id, date, total_rounds):
-        query = "INSERT INTO tournaments (name, admin_id, date, total_rounds) VALUES (?, ?, ?, ?)"
+        query = "INSERT INTO tournaments (name, admin_id, date, total_rounds) VALUES (%s, %s, %s, %s) RETURNING id"
         id = self.db.execute_query(query, (name, admin_id, date, total_rounds), commit=True)
         print(f"Tournament CREATED with id={id}")
         return id
     
     def delete(self, tournament_id):
         queries = [
-            "DELETE FROM tournament_players WHERE tournament_id=?",
-            "DELETE FROM matches WHERE tournament_id=?",
-            "DELETE FROM tournaments WHERE id=?"
+            "DELETE FROM tournament_players WHERE tournament_id=%s",
+            "DELETE FROM matches WHERE tournament_id=%s",
+            "DELETE FROM tournaments WHERE id=%s"
         ]
         for query in queries:
             self.db.execute_query(query, (tournament_id,), commit=True)
@@ -150,7 +151,7 @@ class TnmtManager:
 
     def get_by_id(self, tournament_id) -> Tournament:
         query = '''SELECT id, admin_id, name, date, status, current_round, total_rounds
-                    FROM tournaments WHERE id=?
+                    FROM tournaments WHERE id=%s
                 '''
         packed = self.db.process_query(self.parse, query, params=(tournament_id,), limit=1)
         return packed[0] if packed else None
@@ -159,7 +160,7 @@ class TnmtManager:
         query = '''
             SELECT player_id
             FROM tournament_players
-            WHERE tournament_id = ?
+            WHERE tournament_id = %s
         '''
         rows = self.db.execute_query(query, (tournament_id,), fetchall=True)
         return rows
@@ -171,18 +172,18 @@ class TnmtManager:
             ''' + get_opponents_json + '''
             FROM tournament_players tp
             JOIN players pl ON tp.player_id = pl.id
-            WHERE tp.tournament_id = ?'''
+            WHERE tp.tournament_id = %s'''
         pm = PlayerManager(self.db)
         return self.db.process_query(pm.parse_tnmt, query, params=(tournament_id,))
 
     def add_player(self, tournament_id, player_id):
-        query = "INSERT OR IGNORE INTO tournament_players VALUES (?, ?, ?, ?)"
+        query = "INSERT INTO tournament_players VALUES (%s, %s, %s, %s) ON CONFLICT (tournament_id, player_id) DO NOTHING"
         self.db.execute_query(query, (tournament_id, player_id, 0, 0), commit=True)
     
     def get_stats(self, tournament_id):
         queries = [
-            ("SELECT COUNT(*) FROM tournament_players WHERE tournament_id=?", (tournament_id,)),
-            ("SELECT COUNT(*) FROM matches WHERE tournament_id=?", (tournament_id,))
+            ("SELECT COUNT(*) FROM tournament_players WHERE tournament_id=%s", (tournament_id,)),
+            ("SELECT COUNT(*) FROM matches WHERE tournament_id=%s", (tournament_id,))
         ]
         stats = {}
         for query, params in queries:
@@ -195,7 +196,7 @@ class TnmtManager:
             SELECT m.id, m.tournament_id, m.round, 
                    m.player1_id, m.player2_id, m.result, m.player1_color
             FROM matches m
-            WHERE m.tournament_id=?
+            WHERE m.tournament_id=%s
             ORDER BY m.round
         '''
         return self.db.process_query(self.parse_match, query, params=(tournament_id,))
@@ -217,11 +218,11 @@ class TnmtManager:
         return match
 
     def update_match_result(self, match_id, result, p1_id, p2_id):
-        query_update = "UPDATE matches SET result=? WHERE id=?"
+        query_update = "UPDATE matches SET result=%s WHERE id=%s"
         try:
             self.db.execute_query(query_update, (result, match_id), commit=True)
 
-            query_points = "UPDATE tournament_players SET points = points+? WHERE player_id=?"
+            query_points = "UPDATE tournament_players SET points = points+%s WHERE player_id=%s"
             points = [0.5,0.5]
             if result=='1-0':
                 points = [1,0]
@@ -236,13 +237,13 @@ class TnmtManager:
             return Status.failed
         
     def get_tournament_id_for_match(self, match_id):
-        query = "SELECT tournament_id FROM matches WHERE id=?"
+        query = "SELECT tournament_id FROM matches WHERE id=%s"
         row = self.db.execute_query(query, (match_id,), fetchone=True)
         return row[0] if row else None
 
     def delete_tournament(self, tournament_id):
         #ON DELETE CASCADE
-        query = "DELETE FROM tournaments WHERE id=?"
+        query = "DELETE FROM tournaments WHERE id=%s"
         try:
             self.db.execute_query(query, (tournament_id,), commit=True)
             return Status.ok
@@ -259,19 +260,19 @@ class TnmtManager:
         for pair in pairs:
             query = '''INSERT INTO matches 
                         (tournament_id, round, player1_id, player2_id)
-                        VALUES (?, ?, ?, ?)'''
+                        VALUES (%s, %s, %s, %s) RETURNING id'''
             id = self.db.execute_query(query, (tournament_id, t.current_round+1, pair[0].id, pair[1].id), commit=True)
             print(f"ADDED match{id} for t{tournament_id}.{t.current_round}, ({pair[0].name} vs {pair[1].name})")
 
             update_balance_query = '''
-            UPDATE tournament_players SET color_balance = ? WHERE player_id=?
+            UPDATE tournament_players SET color_balance = %s WHERE player_id=%s
             '''
             self.db.execute_query(update_balance_query, (pair[0].color_balance, pair[0].id), commit=True)
             self.db.execute_query(update_balance_query, (pair[1].color_balance, pair[1].id), commit=True)
         
         
         update_round_query = '''
-            UPDATE tournaments SET current_round = ? WHERE id=?
+            UPDATE tournaments SET current_round = %s WHERE id=%s
         '''
         self.db.execute_query(update_round_query, (t.current_round+1, tournament_id), commit=True)
 

@@ -118,6 +118,7 @@ def create_tournament():
         # else:
         #     session['tnmts'] = [t_id]
         #     session.modified = True
+        print("CREATED Tournament with id=",t_id)
         return redirect(url_for('manage_tournament', tournament_id=t_id))
     return render_template('create_tournament.html')
 
