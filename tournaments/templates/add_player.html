@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Добавить игрока</title>
+    <style>
+        body { font-family: Arial, sans-serif; max-width: 500px; margin: 50px auto; padding: 20px; }
+        .form-container { background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        h1 { text-align: center; color: #333; }
+        .form-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 5px; }
+        input[type="text"], input[type="number"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
+        button { padding: 10px 20px; background-color: #2ecc71; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .error { color: #e74c3c; margin-bottom: 15px; }
+        .back-link { display: block; margin-top: 20px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="form-container">
+        <h1>Добавить нового игрока</h1>
+        
+        {% if error %}
+            <div class="error">{{ error }}</div>
+        {% endif %}
+        
+        <form method="POST">
+            <div class="form-group">
+                <label for="name">Имя игрока:</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="rating">Рейтинг:</label>
+                <input type="number" id="rating" name="rating" min="0" value="1000">
+            </div>
+            
+            <button type="submit">Добавить игрока</button>
+        </form>
+        
+        <a href="{{ url_for('players_list') }}" class="back-link">← Назад к списку игроков</a>
+    </div>
+</body>
+</html>

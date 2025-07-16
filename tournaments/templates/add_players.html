@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Добавить игроков</title>
+</head>
+<body>
+    <h1>Добавить игроков в турнир</h1>
+    <form method="POST">
+        <h2>Новый игрок:</h2>
+        <input type="text" name="new_player" placeholder="Имя игрока">
+        
+        <h2>Существующие игроки:</h2>
+        <ul>
+            {% for player in all_players %}
+                <li>
+                    <input type="checkbox" name="player_{{ player.id }}" 
+                           {% if tournament_player_ids and (player.id in tournament_player_ids) %}checked{% endif %}>
+                    {{ player.name }}
+                </li>
+            {% endfor %}
+        </ul>
+        
+        <button type="submit">Сохранить</button>
+    </form>
+</body>
+</html>

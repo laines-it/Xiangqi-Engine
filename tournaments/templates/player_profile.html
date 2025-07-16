@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Профиль игрока - {{ player.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1, h2 { color: #333; }
+        .player-info { 
+            background-color: #f9f9f9; 
+            padding: 15px; 
+            border-radius: 8px; 
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .stats { 
+            display: flex; 
+            gap: 20px; 
+            margin: 20px 0; 
+        }
+        .stat-card { 
+            background: white; 
+            padding: 15px; 
+            border-radius: 8px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+            flex: 1;
+        }
+        .stat-value { 
+            font-size: 24px; 
+            font-weight: bold; 
+            margin: 5px 0;
+        }
+        .win-stat { color: #2ecc71; }
+        .loss-stat { color: #e74c3c; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        .btn { 
+            background-color: #3498db; color: white; padding: 8px 15px; 
+            text-decoration: none; border-radius: 4px; display: inline-block;
+        }
+        .btn-back { background-color: #7f8c8d; }
+        .result-win { color: #2ecc71; font-weight: bold; }
+        .result-loss { color: #e74c3c; font-weight: bold; }
+        .result-pending { color: #f39c12; }
+    </style>
+</head>
+<body>
+    <a href="{{ url_for('players_list') }}" class="btn btn-back">← К списку игроков</a>
+    <div class="player-info">
+        <div>
+            <h1>{{ player.name }}</h1>
+            <p>Рейтинг: <strong>{{ player.rating }}</strong></p>
+        </div>
+    </div>
+    
+    <div class="stats">
+        <div class="stat-card">
+            <div>Всего матчей</div>
+            <div class="stat-value">{{ total_matches }}</div>
+        </div>
+        <div class="stat-card">
+            <div>Побед</div>
+            <div class="stat-value win-stat">{{ wins }}</div>
+        </div>
+        <div class="stat-card">
+            <div>Поражений</div>
+            <div class="stat-value loss-stat">{{ losses }}</div>
+        </div>
+        <div class="stat-card">
+            <div>Процент побед</div>
+            <div class="stat-value">{{ win_rate|round(1) }}%</div>
+        </div>
+    </div>
+    
+    <h2>Участие в турнирах</h2>
+    {% if tournaments %}
+    <table>
+        <thead>
+            <tr>
+                <th>Турнир</th>
+                <th>Дата создания</th>
+                <th>Перейти</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tournament in tournaments %}
+            <tr>
+                <td>{{ tournament.name }}</td>
+                <td>{{ tournament.date }}</td>
+                <td>
+                    <a href="{{ url_for('manage_tournament', tournament_id=tournament.id) }}" class="btn">
+                        Перейти
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>Игрок не участвовал ни в одном турнире</p>
+    {% endif %}
+    
+    <h2>История матчей</h2>
+    {% if matches %}
+    <table>
+        <thead>
+            <tr>
+                <th>Турнир</th>
+                <th>Раунд</th>
+                <th>Соперник</th>
+                <th>Результат</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for match in matches %}
+            <tr>
+                <td>{{ match.tournament_name }}</td>
+                <td>{{ match.round }}</td>
+                <td>
+                    <a href="{{ url_for('player_profile', player_id=match.opponent_id) }}">
+                        {{ match.opponent_name }}
+                    </a>
+                </td>
+                <td>
+                    {% if match.result == 'Победа' %}
+                        <span class="result-win">Победа</span>
+                    {% elif match.result == 'Поражение' %}
+                        <span class="result-loss">Поражение</span>
+                    {% else %}
+                        <span class="result-pending">Не завершен</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>Игрок не сыграл ни одного матча</p>
+    {% endif %}
+</body>
+</html>

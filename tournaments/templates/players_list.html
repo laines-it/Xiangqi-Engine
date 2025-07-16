@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Список игроков</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { color: #333; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        th { background-color: #f2f2f2; }
+        tr:hover { background-color: #f9f9f9; }
+        .rating { font-weight: bold; }
+        .win-rate { color: #2ecc71; }
+        .loss-rate { color: #e74c3c; }
+        .btn { 
+            background-color: #3498db; color: white; padding: 8px 15px; 
+            text-decoration: none; border-radius: 4px; display: inline-block;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+        <a href="{{ url_for('index') }}" class="btn">На главную</a>
+        {% if is_admin %}
+            <a href="{{ url_for('add_player') }}" class="btn" style="background-color: #2ecc71;">Добавить игрока</a>
+        {% endif %}
+    </div>
+    
+    <h1>Список всех игроков</h1>
+    
+    {% if players %}
+    <table>
+        <thead>
+            <tr>
+                <th>Имя</th>
+                <th>Рейтинг</th>
+                <th>Матчи</th>
+                <th>Победы</th>
+                <th>Профиль</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for player in players %}
+            <tr>
+                <td>{{ player.name }}</td>
+                <td class="rating">{{ player.rating }}</td>
+                <td>
+                    <a href="{{ url_for('player_profile', player_id=player.id) }}" class="btn">
+                        Профиль
+                    </a>
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% else %}
+        <p>Игроки не найдены</p>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,29 @@
+#Test scripts
+tournaments/test.py
+tournaments/tmp.py
+tournaments/api.py
+game_logic/clang/
+game_logic/test.py
+game_logic/test.txt
+game_logic/game_log.txt
+game_logic/app.py
+
+#Config
+tournaments/config.py
+tournaments/data.csv
+tournaments/tournaments.db
+
+#Cache
+tournaments/__pycache__/
+game_logic/__pycache__/
+__pycache__/
+
+#Coursework files
+course/
+
+#Unused files
+trash/
+
+#Keys
+laines-it-xiangqi.pub
+laines-it-xiangqi
