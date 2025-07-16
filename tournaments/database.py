@@ -7,13 +7,7 @@ from config import Role, ADMIN
 
 class Database:
     def __init__(self):
-        self.conn_params = {
-            'dbname': os.environ['DB_NAME'],
-            'user': os.environ['DB_USER'],
-            'password': os.environ['DB_PASSWORD'],
-            'host': os.environ['DB_HOST'],
-            'port': os.environ['DB_PORT']
-        }
+        self.DATABASE_URL = os.getenv('DATABASE_URL')
         self.init_db()
 
     def init_db(self):
@@ -77,7 +71,7 @@ class Database:
                 conn.commit()
 
     def connect(self):
-        return psycopg2.connect(**self.conn_params, cursor_factory=DictCursor)
+        return psycopg2.connect(self.DATABASE_URL, sslmode='require', cursor_factory=DictCursor)
 
     def execute_query(self, query, params=(), fetchone=False, fetchall=False, commit=False):
         with self.connect() as conn:
