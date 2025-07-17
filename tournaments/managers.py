@@ -1,7 +1,6 @@
 from database import Database
 from config import Status, Role, get_opponents_json
 from models import Tournament, User, Player, TnmtPlayer, Match
-import json
 
 class UserManager:
     def __init__(self, db : Database):
@@ -19,13 +18,14 @@ class UserManager:
         packed = self.db.process_query(self.parse, query, params=(name, password), limit=1)
         return packed[0] if packed else None
     
-    def new_user(self, username, password, role : Role):
-        query = "INSERT INTO users (username, password, role) VALUES (%s, %s, %s) RETURNING id"
+    def new_user(self, username, password, role : Role, email):
+        query = "INSERT INTO users (username, password, role, email) VALUES (%s, %s, %s, %s) RETURNING id"
         try:
-            id = self.db.execute_query(query, (username, password, role.value), commit=True)
-            print(f"USER {username}, id={id} ADDED with Role {role}")
+            id = self.db.execute_query(query, (username, password, role.value, email), commit=True)
+            print(f"USER {username}, id={id} ADDED with Role {role} and email{email}")
             return Status.ok
-        except:
+        except Exception as e:
+            print(e)
             return Status.failed
 
     def parse(self, row):

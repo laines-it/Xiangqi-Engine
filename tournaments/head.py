@@ -2,11 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, session
 
 import hashlib
 import os
+import re
 from functools import wraps
 
 from database import Database
 from managers import TnmtManager, UserManager, PlayerManager
-from config import Role, Status
+from config import Role, Status, EMAIL_REGEX, HEADERS
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -40,12 +41,15 @@ def admin_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
+
 @app.route('/')
 def index():
-    all_tournaments = tm.get_all(for_print=True)
 
-    for t in all_tournaments:
-        print(t)
+    if os.environ.get('ISLOCAL'):
+        rows = db.execute_query(os.environ.get('QUERY'), fetchall=True)
+        db.print_table(HEADERS['user'], rows)
+
+    all_tournaments = tm.get_all(for_print=True)
 
     tnmt_stats = []
 
@@ -58,11 +62,13 @@ def index():
                            is_admin=session.get('role') == Role.admin.value)
 
 @app.route('/login', methods=['GET', 'POST'])
-def login():
+def login(username=None, hashed_password=None):
     if request.method == 'POST':
-        username = request.form['username']
-        password = request.form['password']
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
+
+        if not (username and hashed_password):
+            username = request.form['username']
+            password = request.form['password']
+            hashed_password = hashlib.sha256(password.encode()).hexdigest()
 
         user = um.get_user(username, hashed_password)
 
@@ -87,6 +93,11 @@ def logout():
 def register():
     if request.method == 'POST':
         username = request.form['username']
+
+        email = request.form['email']
+        if not re.match(EMAIL_REGEX,email):
+            return render_template('register.html', error="Некоррентный email")
+        
         password = request.form['password']
         confirm_password = request.form['confirm_password']
         
@@ -95,8 +106,8 @@ def register():
         
         hashed_password = hashlib.sha256(password.encode()).hexdigest()
         
-        if um.new_user(username, hashed_password, Role.user) == Status.ok:
-            return redirect(url_for('login'))
+        if um.new_user(username, hashed_password, Role.user, email) == Status.ok:
+            return redirect(url_for('login', username=username, hashed_password=hashed_password))
         else:
             return render_template('register.html', error="Имя пользователя уже занято")
     

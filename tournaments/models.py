@@ -1,6 +1,4 @@
-from database import Database
 from config import TnmtStatus, Role
-import random
 
 class User:
     def __init__(self, id, name = "Noname", role = Role.user, email = "", tnmts_admin : list = []):

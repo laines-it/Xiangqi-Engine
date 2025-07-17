@@ -1,5 +1,4 @@
 import psycopg2
-from psycopg2 import sql
 from psycopg2.extras import DictCursor
 import os
 
@@ -111,3 +110,24 @@ class Database:
         conn = self.connect()
         conn.commit()
         conn.close()
+
+    def print_table(self, headers, data):
+        str_data = [
+            [str(item) for item in row] 
+            for row in data
+        ]
+        
+        widths = [
+            max(len(header), *[len(row[i]) for row in str_data]) 
+            for i, header in enumerate(headers)
+        ]
+        
+        fmt = " ".join(f"{{:<{w}}}" for w in widths)
+        
+        print(fmt.format(*headers))
+        
+        separator = " ".join("-" * w for w in widths)
+        print(separator)
+        
+        for row in str_data:
+            print(fmt.format(*row))
