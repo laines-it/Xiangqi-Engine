@@ -2,6 +2,11 @@ from database import Database
 from config import Status, Role, get_opponents_json
 from models import Tournament, User, Player, TnmtPlayer, Match
 
+def rating_from(ingo):
+    return 2750 - 7*ingo
+def ingo_from(rating):
+    return (2750 - rating)/7
+
 class UserManager:
     def __init__(self, db : Database):
         self.db = db
@@ -75,12 +80,12 @@ class PlayerManager:
 
     def parse(self, row):
         p = Player(id=row[0],
-                    user_id=row[1],name=row[2],rating=row[3])
+                    user_id=row[1],name=row[2],ingo=ingo_from(row[3]))
         return p
     
     def parse_tnmt(self, row):
         p = TnmtPlayer(id=row[0],
-                    user_id=row[1],name=row[2],rating=row[3],
+                    user_id=row[1],name=row[2],ingo=ingo_from(row[3]),
                     tnmt_id=row[4],points=row[5],color_balance=row[6],
                     opponents=row[7])
         return p
@@ -99,6 +104,58 @@ class PlayerManager:
         except:
             return Status.failed
     
+    def get_player_by_user_id(self, user_id):
+        query = "SELECT id, user_id, name, rating FROM players WHERE user_id=%s"
+        players = self.db.process_query(self.parse, query, (user_id,), limit=1)
+        return players[0] if players else None
+
+    def new_player_with_user(self, name, rating, user_id):
+        query = "INSERT INTO players (name, rating, user_id) VALUES (%s, %s, %s) RETURNING id"
+        try:
+            id = self.db.execute_query(query, (name, rating, user_id), commit=True)
+            return id
+        except Exception as e:
+            raise Exception("Ошибка при создании игрока: " + str(e))
+
+    def get_player_matches(self, player_id, limit=10):
+        query = """
+            SELECT m.id, m.tournament_id, t.name AS tournament_name, m.round, 
+                p1.name AS player1_name, p2.name AS player2_name,
+                m.result, t.date
+            FROM matches m
+            JOIN tournaments t ON m.tournament_id = t.id
+            LEFT JOIN players p1 ON m.player1_id = p1.id
+            LEFT JOIN players p2 ON m.player2_id = p2.id
+            WHERE (m.player1_id = %s OR m.player2_id = %s) 
+            ORDER BY t.date DESC, m.round DESC
+            LIMIT %s
+        """
+        params = (player_id, player_id, limit)
+        return self.db.process_query(lambda row: {
+            'id': row[0],
+            'tournament_id': row[1],
+            'tournament_name': row[2],
+            'round': row[3],
+            'player1_name': row[4],
+            'player2_name': row[5],
+            'result': row[6],
+            'date': row[7]
+        }, query, params)
+
+    def get_player_tournaments(self, player_id):
+        query = """
+            SELECT t.id, t.name
+            FROM tournaments t
+            JOIN tournament_players tp ON t.id = tp.tournament_id
+            WHERE tp.player_id = %s
+            ORDER BY t.date DESC
+        """
+        return self.db.process_query(lambda row: {
+            'id': row[0],
+            'name': row[1]
+        }, query, (player_id,))
+
+
 class TnmtManager:
     def __init__(self, db : Database):
         self.db = db

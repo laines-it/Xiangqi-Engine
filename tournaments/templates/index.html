@@ -13,11 +13,15 @@
             <a href="{{ url_for('players_list') }}" class="btn" style="background-color: #9b59b6;">Список игроков</a>
             <a href="{{ url_for('add_player') }}" class="btn" 
             style="background-color: #2ecc71; {% if not is_admin %}display: none;{% endif %}">Добавить игрока</a>
+            <a href="{{ url_for('exec_query') }}" class="btn" 
+            style="background-color: #cc2eb4; {% if not is_local %}display: none;{% endif %}">Выполнить локальный запрос</a>
+        
         </div>
         
         <div>
             {% if 'username' in session %}
                 <span style="margin-right: 15px;">Привет, {{ session['username'] }}!</span>
+                <a href="{{ url_for('player_profile') }}">Мой профиль</a>
                 <a href="{{ url_for('logout') }}" class="btn" style="background-color: #e74c3c;">Выйти</a>
             {% else %}
                 <a href="{{ url_for('login') }}" class="btn" style="background-color: #3498db;">Войти</a>

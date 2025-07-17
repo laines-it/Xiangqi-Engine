@@ -45,10 +45,8 @@ def admin_required(f):
 @app.route('/')
 def index():
 
-    if os.environ.get('ISLOCAL'):
-        rows = db.execute_query(os.environ.get('QUERY'), fetchall=True)
-        db.print_table(HEADERS['user'], rows)
-
+    is_local = os.environ.get('ISLOCAL')
+        
     all_tournaments = tm.get_all(for_print=True)
 
     tnmt_stats = []
@@ -59,7 +57,14 @@ def index():
                            tournaments=all_tournaments,
                            players=players,
                            tournament_stats=tnmt_stats,
-                           is_admin=session.get('role') == Role.admin.value)
+                           is_admin=session.get('role') == Role.admin.value,
+                           is_local=is_local)
+
+@app.route('/analytics')
+def exec_query():
+    rows = db.execute_query(os.environ.get('QUERY'), fetchall=True)
+    db.print_table(HEADERS['user'], rows)
+    return redirect(url_for('index'))
 
 @app.route('/login', methods=['GET', 'POST'])
 def login(username=None, hashed_password=None):
@@ -331,6 +336,39 @@ def delete_tournament(tournament_id):
     else:
         return "Ошибка при удалении турнира", 400
 
+@app.route('/player')
+@login_required
+def player_profile():
+    user_id = session['user_id']
+    player = pm.get_player_by_user_id(user_id)
+    
+    if not player:
+        return render_template('player_profile.html', player=None)
+    
+    recent_matches = pm.get_player_matches(player.id, limit=10)
+    
+    tournaments = pm.get_player_tournaments(player.id)
+    
+    return render_template('player_profile.html',
+                           player=player,
+                           recent_matches=recent_matches,
+                           tournaments=tournaments)
+
+@app.route('/player/create', methods=['GET', 'POST'])
+@login_required
+def create_player():
+    if request.method == 'POST':
+        name = request.form['surname'] + ' ' + request.form['name']
+        rating = request.form.get('rating', 1000)
+        user_id = session['user_id']
+        
+        try:
+            pm.new_player_with_user(name, rating, user_id)
+            return redirect(url_for('player_profile'))
+        except Exception as e:
+            return render_template('create_player.html', error=str(e))
+    
+    return render_template('create_player.html')
 
 if __name__ == '__main__':
     app.run(debug=True)

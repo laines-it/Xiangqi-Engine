@@ -9,24 +9,80 @@ class User:
         self.tournaments_admins = tnmts_admin
 
 class Player:
-    def __init__(self, id, user_id, name, rating):
+    def __init__(self, id, user_id, name, ingo):
         self.id = id
         self.user_id = user_id
         self.name = name
-        self.rating = rating
+        self.ingo = ingo
+        self.rating = 2750 - 7*ingo
 
     def __repr__(self):
         return f"{self.name} ({self.rating})"
 
 class TnmtPlayer(Player):
-    def __init__(self, id, user_id, name, rating,
+    def __init__(self, id, user_id, name, ingo,
                  tnmt_id, points, color_balance, opponents=[]):
-        super().__init__(id, user_id, name, rating)
+        super().__init__(id, user_id, name, ingo)
         self.tnmt_id = tnmt_id
         self.points = points
         self.color_balance = color_balance
         self.opponents = opponents
         self.buchholz = 0
+
+    def update_rating(self, total_tournaments, opponents_ingos):
+        adjusted_opponents = [
+            min(opp_ingo, self.ingo + 50)
+            for opp_ingo in opponents_ingos
+        ]
+        
+        # Расчёт среднего скорректированного INGO соперников
+        avg_opponents = sum(adjusted_opponents) / len(adjusted_opponents) if adjusted_opponents else 0
+        
+        # Расчёт нового INGO на основе результатов турнира
+        new_ingo = avg_opponents + 50 - self.points * 100
+        
+        # Определение базового коэффициента k
+        if total_tournaments > 14:
+            k = 4
+        elif total_tournaments > 9:
+            k = 3
+        elif total_tournaments > 4:
+            k = 2
+        elif total_tournaments > 0:
+            k = 1
+        else:
+            k = 0
+        
+        # Корректировка k по правилам
+        if self.self.ingo - new_ingo >= 25:
+            k = max(0, k - 1)  # Уменьшение при значительном падении
+        
+        if self.tournament_games < 5:
+            k += (5 - self.tournament_games) * 2  # Увеличение за малое количество партий
+        
+        if self.time_category == 'cat1':  # Контроль времени 45-60 минут
+            k += 1
+        elif self.time_category == 'cat2':  # Контроль времени 30-45 минут
+            k += 2
+        
+        # Расчёт обновлённого INGO
+        if k == 0:
+            updated_ingo = new_ingo
+        else:
+            updated_ingo = (self.self.ingo * k + new_ingo) / (k + 1)
+        updated_ingo = round(updated_ingo, 1)  # Округление до одного знака
+        
+        # Расчёт российского рейтинга
+        russian_rating = 2750 - 7 * updated_ingo
+        russian_rating = round(russian_rating)  # Округление до целого
+        
+        # Обновление состояния игрока
+        self.self.ingo = updated_ingo
+        self.total_tournaments += 1
+        self.rating = russian_rating
+        
+        return russian_rating
+
 
 class Tournament:
     def __init__(self, id, admin_id, name, date, total_rounds, status=TnmtStatus.upcoming, players=[], current_round=0):
