@@ -2,6 +2,7 @@
 <html>
 <head>
     <title>Турнирная система</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
 </head>
 <body>
     <h1>Турниры</h1>
@@ -15,7 +16,7 @@
             style="background-color: #2ecc71; {% if not is_admin %}display: none;{% endif %}">Добавить игрока</a>
             <a href="{{ url_for('exec_query') }}" class="btn" 
             style="background-color: #cc2eb4; {% if not is_local %}display: none;{% endif %}">Выполнить локальный запрос</a>
-        
+            <a href="{{ url_for('tournaments_list') }}" class="btn" style="background-color: #746610;">Все турниры</a>
         </div>
         
         <div>
@@ -108,8 +109,8 @@
                     {% if tournament.status == 'upcoming' %}
                         <span class="status-active">Планируется</span>
                     {% else %}
-                    {% if tournament.status == 'active' %}
-                    <span class="status-completed">Активный</span>
+                    {% if tournament.status == 'ongoing' %}
+                    <span class="status-completed">Идет</span>
                     {% else %}
                     <span class="status-completed">Завершен</span>
                     {% endif %}

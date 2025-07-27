@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Список турниров</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <h1>Список турниров</h1>
+    <a href="{{ url_for('index') }}">На главную</a>
+    
+    <table>
+        <thead>
+            <tr>
+                <th>Название</th>
+                <th>Дата</th>
+                <th>Статус</th>
+                <th>Туры</th>
+                <th>Действия</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tournament in tournaments %}
+            <tr>
+                <td>
+                    <a href="{{ url_for('manage_tournament', tournament_id=tournament.id) }}">
+                        {{ tournament.name }}
+                    </a>
+                </td>
+                <td>{{ tournament.date.strftime('%d.%m.%Y %H:%M') }}</td>
+                <td class="status-{{ tournament.status }}">
+                    {% if tournament.status == 'upcoming' %}
+                        Планируется
+                    {% elif tournament.status == 'ongoing' %}
+                        Идет
+                    {% else %}
+                        Завершен
+                    {% endif %}
+                </td>
+                <td>{{ tournament.current_round }}/{{ tournament.total_rounds }}</td>
+                <td>
+                    {% if is_user and tournament.status == 'upcoming'%}
+                        <form action="{{ url_for('register_player', tournament_id=tournament.id) }}" method="POST">
+                            <button type="submit" class="btn">Зарегистрироваться</button>
+                        </form>
+                        {% if not player %}
+                        <span>Создайте игрока в Профиле</span>
+                        {% elif tournament.id in registered_tnmts %}
+                        <span>Вы уже зарегистрированы</span>
+                        {% endif %}
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            <tr>
+                <td colspan="5">Турниры не найдены</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</body>
+</html>

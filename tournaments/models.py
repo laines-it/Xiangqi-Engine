@@ -1,12 +1,17 @@
 from config import TnmtStatus, Role
+import bcrypt
 
 class User:
-    def __init__(self, id, name = "Noname", role = Role.user, email = "", tnmts_admin : list = []):
+    def __init__(self, id, name = "Noname", pw:str = None, role = Role.user, email = "", current_player_id=None):
         self.id = id
         self.name = name
         self.role = role
         self.email = email
-        self.tournaments_admins = tnmts_admin
+        self.current_player_id = current_player_id
+        self.pw = pw
+    
+    def auth(self, password_bytes):
+        return bcrypt.checkpw(password_bytes, self.pw.encode('utf-8'))
 
 class Player:
     def __init__(self, id, user_id, name, ingo):
@@ -29,7 +34,7 @@ class TnmtPlayer(Player):
         self.opponents = opponents
         self.buchholz = 0
 
-    def update_rating(self, total_tournaments, opponents_ingos):
+    def update_rating(self, total_tournaments, total_rounds, opponents_ingos, time_control_category):
         adjusted_opponents = [
             min(opp_ingo, self.ingo + 50)
             for opp_ingo in opponents_ingos
@@ -54,15 +59,15 @@ class TnmtPlayer(Player):
             k = 0
         
         # Корректировка k по правилам
-        if self.self.ingo - new_ingo >= 25:
+        if self.ingo - new_ingo >= 25:
             k = max(0, k - 1)  # Уменьшение при значительном падении
         
-        if self.tournament_games < 5:
-            k += (5 - self.tournament_games) * 2  # Увеличение за малое количество партий
+        if total_rounds < 5:
+            k += (5 - total_rounds) * 2  # Увеличение за малое количество партий
         
-        if self.time_category == 'cat1':  # Контроль времени 45-60 минут
+        if time_control_category == 'cat1':  # Контроль времени 45-60 минут
             k += 1
-        elif self.time_category == 'cat2':  # Контроль времени 30-45 минут
+        elif time_control_category == 'cat2':  # Контроль времени 30-45 минут
             k += 2
         
         # Расчёт обновлённого INGO
@@ -77,8 +82,7 @@ class TnmtPlayer(Player):
         russian_rating = round(russian_rating)  # Округление до целого
         
         # Обновление состояния игрока
-        self.self.ingo = updated_ingo
-        self.total_tournaments += 1
+        self.ingo = updated_ingo
         self.rating = russian_rating
         
         return russian_rating

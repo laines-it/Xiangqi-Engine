@@ -1,13 +1,32 @@
 import psycopg2
 from psycopg2.extras import DictCursor
 import os
+import bcrypt
 
 from config import Role
 
 class Database:
     def __init__(self):
-        self.DATABASE_URL = os.environ.get('DATABASE_URL')
+        # self.conn_params = {
+        #     'dbname': os.environ['DB_NAME'],
+        #     'user': os.environ['DB_USER'],
+        #     'password': os.environ['DB_PASSWORD'],
+        #     'host': os.environ['DB_HOST'],
+        #     'port': os.environ['DB_PORT']
+        # }
+        self.conn_params = os.environ.get('DATABASE_URL')
         self.init_db()
+
+    def restart(self):
+        with self.connect() as conn:
+            with conn.cursor() as c:
+                c.execute("DROP TABLE tournament_players")
+                c.execute("DROP TABLE matches")
+                c.execute("DROP TABLE tournaments")
+                c.execute("DROP TABLE players")
+                c.execute("DROP TABLE users")
+                conn.commit() 
+        self.init_db()                           
 
     def init_db(self):
         with self.connect() as conn:
@@ -23,13 +42,14 @@ class Database:
                                 id SERIAL PRIMARY KEY,
                                 user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
                                 name VARCHAR(100) UNIQUE NOT NULL,
-                                rating INTEGER NOT NULL DEFAULT 1000 CHECK (rating >= 0))''')
+                                tournaments_played SMALLINT DEFAULT 0,
+                                ingo SMALLINT NOT NULL DEFAULT 1000 CHECK (ingo >= 0))''')
 
                 c.execute('''CREATE TABLE IF NOT EXISTS tournaments (
                                 id SERIAL PRIMARY KEY,
                                 admin_id INTEGER NOT NULL REFERENCES users(id),
                                 name VARCHAR(100) NOT NULL,
-                                date TIMESTAMPTZ NOT NULL,
+                                date TIMESTAMP NOT NULL,
                                 status VARCHAR(20) NOT NULL DEFAULT 'upcoming',
                                 total_rounds SMALLINT NOT NULL CHECK (total_rounds > 0),
                                 current_round SMALLINT NOT NULL DEFAULT 0 CHECK (current_round >= 0),
@@ -57,18 +77,20 @@ class Database:
                 c.execute("CREATE INDEX IF NOT EXISTS idx_matches_tournament ON matches(tournament_id)")
                 c.execute("CREATE INDEX IF NOT EXISTS idx_matches_player1 ON matches(player1_id)")
                 c.execute("CREATE INDEX IF NOT EXISTS idx_matches_player2 ON matches(player2_id)")
-                c.execute("CREATE INDEX IF NOT EXISTS idx_tournament_status ON tournaments(status)")
-                c.execute("CREATE INDEX IF NOT EXISTS idx_player_rating ON players(rating DESC)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_player_ingo ON players(ingo ASC)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_player_user ON players(user_id)")
 
+                admin_pass = os.environ.get('ADMIN_PASSWORD').encode('utf-8')
+                admin_hash_pass = bcrypt.hashpw(admin_pass, bcrypt.gensalt())
                 c.execute('''INSERT INTO users (username, password, role) 
                             VALUES (%s, %s, %s)
                             ON CONFLICT (username) DO NOTHING''', 
-                        (os.environ.get('ADMIN_NAME'), os.environ.get('ADMIN_PASSWORD_HEX'), Role.admin.value))
+                        (os.environ.get('ADMIN_NAME'), admin_hash_pass, Role.admin.value))
 
                 conn.commit()
 
     def connect(self):
-        return psycopg2.connect(self.DATABASE_URL, sslmode='require', cursor_factory=DictCursor)
+        return psycopg2.connect(self.conn_params, sslmode='require', cursor_factory=DictCursor)
 
     def execute_query(self, query, params=(), fetchone=False, fetchall=False, commit=False):
         with self.connect() as conn:

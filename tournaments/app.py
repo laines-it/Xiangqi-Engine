@@ -1,19 +1,18 @@
-from flask import Flask, render_template, request, redirect, url_for, session
+from flask import Flask, jsonify, make_response, render_template, request, redirect, url_for, session
 
-import hashlib
 import os
 import re
+import bcrypt
+from dotenv import load_dotenv
 from functools import wraps
 
 from database import Database
 from managers import TnmtManager, UserManager, PlayerManager
 from config import Role, Status, EMAIL_REGEX, HEADERS
 
-from dotenv import load_dotenv
 load_dotenv()
 
 app = Flask(__name__)
-
 app.secret_key = os.environ.get('FLASK_SECRET_KEY')
 
 db = Database()
@@ -23,12 +22,16 @@ pm = PlayerManager(db)
 
 @app.errorhandler(404)
 def page_not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({"error": "Not found"}), 404
     return render_template('404.html'), 404
 
 def login_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'user_id' not in session:
+            if request.path.startswith('/api/'):
+                return jsonify({"error": "Unauthorized"}), 401
             return redirect(url_for('login', next=request.url))
         return f(*args, **kwargs)
     return decorated_function
@@ -37,7 +40,9 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if 'role' not in session or session['role'] != Role.admin.value:
-            return f"Доступ запрещен. Требуются права администратора. Ваша текущая роль: {session['role']}", 403
+            if request.path.startswith('/api/'):
+                return jsonify({"error": "Forbidden", "message": "Admin rights required"}), 403
+            return f"Доступ запрещен...", 403
         return f(*args, **kwargs)
     return decorated_function
 
@@ -62,32 +67,38 @@ def index():
 
 @app.route('/analytics')
 def exec_query():
-    rows = db.execute_query(os.environ.get('QUERY'), fetchall=True)
-    db.print_table(HEADERS['user'], rows)
+    db.restart()
+    # rows = db.execute_query(os.environ.get('QUERY'), fetchall=True)
+    # db.print_table(HEADERS['user'], rows)
     return redirect(url_for('index'))
 
 @app.route('/login', methods=['GET', 'POST'])
-def login(username=None, hashed_password=None):
+def login():
     if request.method == 'POST':
 
-        if not (username and hashed_password):
+        if 'temp_username' in session:
+            print(f"I have name {session['temp_username']}")
+            username = session.pop('temp_username')
+            hashed_password = session.pop('temp_hashed_password')
+        else:
             username = request.form['username']
-            password = request.form['password']
-            hashed_password = hashlib.sha256(password.encode()).hexdigest()
+            hashed_password = request.form['password'].encode('utf-8')
 
         user = um.get_user(username, hashed_password)
 
-        if user:
+        if user.id != -1:
             session['user_id'] = user.id
             session['username'] = user.name
             session['role'] = user.role.value
             session['email'] = user.email
-            # session['tnmts'] = user.tournaments_admins
+            session['current_player_id'] = user.current_player_id
             return redirect(url_for('index'))
+        elif user:
+            return render_template('login.html', error="Неверный пароль")
         else:
-            return render_template('login.html', error="Неверное имя пользователя или пароль")
-
-    return render_template('login.html')
+            return render_template('login.html', error="Пользователя с таким именем не существует")
+    else:
+        return render_template('login.html')
 
 @app.route('/logout')
 def logout():
@@ -109,13 +120,15 @@ def register():
         if password != confirm_password:
             return render_template('register.html', error="Пароли не совпадают")
         
-        hashed_password = hashlib.sha256(password.encode()).hexdigest()
-        
+        hashed_password = bcrypt.hashpw(password.encode())
+
         if um.new_user(username, hashed_password, Role.user, email) == Status.ok:
-            return redirect(url_for('login', username=username, hashed_password=hashed_password))
+            session['temp_username'] = username
+            session['temp_hashed_password'] = hashed_password
+            return redirect(url_for('login'))
         else:
             return render_template('register.html', error="Имя пользователя уже занято")
-    
+
     return render_template('register.html')
 
 @app.route('/tournaments/new', methods=['GET', 'POST'])
@@ -123,17 +136,10 @@ def register():
 @admin_required
 def create_tournament():
     if request.method == 'POST':
-        # admins = session['tnmts']
         name = request.form['name']
         date = request.form['date']
         rounds = request.form['rounds']
         t_id = tm.create(name, session['user_id'], date, rounds)
-        # if admins:
-        #     session['tnmts'].append(t_id)
-        #     session.modified = True
-        # else:
-        #     session['tnmts'] = [t_id]
-        #     session.modified = True
         print("CREATED Tournament with id=",t_id)
         return redirect(url_for('manage_tournament', tournament_id=t_id))
     return render_template('create_tournament.html')
@@ -224,7 +230,6 @@ def manage_tournament(tournament_id):
         
         player_rounds[player.id] = player_results
     
-    # Рассчитываем итоговое место
     if tournament.is_finished:
         tournament.calculate_buchholz()
         sorted_players = sorted(tournament.players, key=lambda p: (p.points, p.buchholz), reverse=True)
@@ -257,12 +262,36 @@ def manage_tournament(tournament_id):
                            is_admin=is_admin,
                            is_finished=tournament.is_finished)
 
+@app.route('/tournaments')
+def tournaments_list():
+    tournaments = tm.get_all()
+    user_id = session.get('user_id')
+    player = None
+    registered_tnmts = []
+    
+    if user_id:
+        player = pm.get_player_by_user_id(user_id)
+        registered_tnmts = pm.get_player_tournaments_ids(player.id)
+
+    return render_template('tournaments_list.html', 
+                          tournaments=tournaments,
+                          player=player,
+                          registered_tnmts=registered_tnmts,
+                          is_user=session.get('role') == Role.user.value)
+
+@app.route('/player/register/<int:tournament_id>', methods=['POST'])
+@login_required
+def register_player(tournament_id):
+    player_id = session['current_player_id']
+    tm.add_player(tournament_id, player_id)
+    return redirect(url_for('tournaments_list'))
+
 @app.route('/players/add/<int:tournament_id>', methods=['GET', 'POST'])
 @login_required
 @admin_required
 def add_players(tournament_id):
     if request.method == 'POST':
-        all_players = pm.get_all() 
+        all_players = pm.get_all()
         for player in all_players:
             if request.form.get(f'player_{player.id}'):
                 tm.add_player(tournament_id, player.id)
@@ -289,6 +318,7 @@ def generate_pairs(tournament_id):
 
 @app.route('/matches/<int:match_id>/result', methods=['POST'])
 @login_required
+@admin_required
 def submit_result(match_id):
     result = request.form.get('result')
     if not result:
@@ -339,16 +369,17 @@ def delete_tournament(tournament_id):
 @app.route('/player')
 @login_required
 def player_profile():
-    user_id = session['user_id']
-    player = pm.get_player_by_user_id(user_id)
+
+    player_id = session['current_player_id']
+    player = pm.get_player_by_id(player_id)
     
     if not player:
         return render_template('player_profile.html', player=None)
     
-    recent_matches = pm.get_player_matches(player.id, limit=10)
+    recent_matches = pm.get_player_matches(player_id, limit=10)
     
-    tournaments = pm.get_player_tournaments(player.id)
-    
+    tournaments = pm.get_player_tournaments(player_id)
+
     return render_template('player_profile.html',
                            player=player,
                            recent_matches=recent_matches,
@@ -372,3 +403,9 @@ def create_player():
 
 if __name__ == '__main__':
     app.run(debug=True)
+    try:
+        from api import api
+        app.register_blueprint(api, url_prefix='/api')
+    except ImportError:
+        print("API module not found. Continuing without API...")
+
