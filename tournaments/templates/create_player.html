@@ -1,22 +1,100 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Создание игрока</title>
-</head>
+{% extends 'base.html' %}
+
+{% block content %}
 <body>
-    <h1>Создать игрока</h1>
-    {% if error %}
-        <p style="color: red;">{{ error }}</p>
-    {% endif %}
-    <form method="POST">
-        <label for="name">Имя:</label>
-        <input type="text" id="name" name="name" required><br><br>
-        <label for="surname">:Фамилия</label>
-        <input type="text" id="surname" name="surname" required><br><br>
-        <label for="rating">Рейтинг:</label>
-        <input type="number" id="rating" name="rating" value="1000"><br><br>
-        
-        <button type="submit">Создать</button>
-    </form>
-</body>
-</html>
+    <div class="container" style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+        <section class="tournaments" style="max-width: 500px; width: 100%;">
+            <div class="tournament-header" style="text-align: center; margin-bottom: 2rem;">
+                <div class="section-title" style="justify-content: center;">
+                    <h2><i class="fa-solid fa-user-plus"></i>  Новый игрок </h2>
+                </div>
+                
+            </div>
+            
+            {% if error %}
+                <div class="error" style="text-align: center; margin-bottom: 1.5rem; color: var(--red);">
+                    {{ error }}
+                </div>
+            {% endif %}
+            
+            <form method="POST" style="padding: 2rem; background: rgba(60, 45, 35, 0.7); border-radius: 12px;">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="code" style="display: block; margin-bottom: 0.5rem; color: var(--light-paper);">
+                        <i class="fa-solid fa-hashtag"></i> Секретный код от Федерации
+                        <div class="hint-trigger">?
+                            <div class="hint-text">Если Вы участвовали в турнирах ранее, свяжитесь с Федерацией.
+                                <a href="{{ url_for('index') }}"> Подробнее </a>
+                            </div>
+                        </div>
+                    </label>
+                    <input type="password" id="code" name="code" required 
+                           style="width: 100%; padding: 0.8rem; border-radius: 8px; 
+                                  border: 1px solid rgba(255, 183, 0, 0.3); 
+                                  background: rgba(30, 30, 30, 0.7); 
+                                  color: var(--paper); 
+                                  transition: all 0.3s ease;">
+                </div>
+                
+                
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" 
+                            style="padding: 0.8rem 2rem; font-size: 1.1rem;">
+                        Привязать игрока
+                    </button>
+                </div>
+                
+            </form>
+            
+            <br>
+
+            <form method="POST" style="padding: 2rem; background: rgba(60, 45, 35, 0.7); border-radius: 12px;">
+                <div class="tournament-title" style="text-align: center; margin-bottom: 1.5rem; color: var(--paper);">
+                Новый игрок будет привязан к Вашему аккаунту
+                </div>
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="name" style="display: block; margin-bottom: 0.5rem; color: var(--light-paper);">
+                    Имя
+                    </label>
+                    <input type="text" id="name" name="name" required 
+                           style="width: 100%; padding: 0.8rem; border-radius: 8px; 
+                                  border: 1px solid rgba(255, 183, 0, 0.3); 
+                                  background: rgba(30, 30, 30, 0.7); 
+                                  color: var(--paper); 
+                                  transition: all 0.3s ease;">
+                </div>
+
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="surname" style="display: block; margin-bottom: 0.5rem; color: var(--light-paper);">
+                    Фамилия
+                    </label>
+                    <input type="text" id="surname" name="surname" required 
+                           style="width: 100%; padding: 0.8rem; border-radius: 8px; 
+                                  border: 1px solid rgba(255, 183, 0, 0.3); 
+                                  background: rgba(30, 30, 30, 0.7); 
+                                  color: var(--paper); 
+                                  transition: all 0.3s ease;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label for="city" style="display: block; margin-bottom: 0.5rem; color: var(--light-paper);">
+                    Город
+                    </label>
+                    <input type="text" id="city" name="city" required 
+                           style="width: 100%; padding: 0.8rem; border-radius: 8px; 
+                                  border: 1px solid rgba(255, 183, 0, 0.3); 
+                                  background: rgba(30, 30, 30, 0.7); 
+                                  color: var(--paper); 
+                                  transition: all 0.3s ease;">
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <button type="submit" class="btn btn-primary" 
+                            style="padding: 0.8rem 2rem; font-size: 1.1rem;">
+                        Создать игрока
+                    </button>
+                </div>
+            </form>
+            
+        </section>
+    </div>
+{% endblock %}

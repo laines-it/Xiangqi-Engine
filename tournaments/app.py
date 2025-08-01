@@ -5,9 +5,10 @@ import re
 import bcrypt
 from dotenv import load_dotenv
 from functools import wraps
+from datetime import datetime
 
 from database import Database
-from managers import TnmtManager, UserManager, PlayerManager
+from managers import TnmtManager, UserManager, PlayerManager, ingo_from
 from config import Role, Status, EMAIL_REGEX, HEADERS
 
 load_dotenv()
@@ -51,13 +52,9 @@ def admin_required(f):
 def index():
 
     is_local = os.environ.get('ISLOCAL')
-        
     all_tournaments = tm.get_all(for_print=True)
-
     tnmt_stats = []
-
     players = pm.get_all()
-
     return render_template('index.html', 
                            tournaments=all_tournaments,
                            players=players,
@@ -73,32 +70,46 @@ def exec_query():
     return redirect(url_for('index'))
 
 @app.route('/login', methods=['GET', 'POST'])
-def login():
+def login(next=None):
+    username = ''
+    hashed_password = ''
     if request.method == 'POST':
+        if username == '':
+            username = request.form['username']
+            hashed_password = request.form['password']
+            # hashed_password = bcrypt.hashpw(password, bcrypt.gensalt()).decode('utf8')
 
+        error = log_in(username, hashed_password)
+        if error:
+            return render_template('login.html', error=error)
+        return redirect(next) if next else redirect(url_for('index'))
+        
+    else:
         if 'temp_username' in session:
             print(f"I have name {session['temp_username']}")
             username = session.pop('temp_username')
             hashed_password = session.pop('temp_hashed_password')
-        else:
-            username = request.form['username']
-            hashed_password = request.form['password'].encode('utf-8')
-
-        user = um.get_user(username, hashed_password)
-
-        if user.id != -1:
-            session['user_id'] = user.id
-            session['username'] = user.name
-            session['role'] = user.role.value
-            session['email'] = user.email
-            session['current_player_id'] = user.current_player_id
-            return redirect(url_for('index'))
-        elif user:
-            return render_template('login.html', error="Неверный пароль")
-        else:
-            return render_template('login.html', error="Пользователя с таким именем не существует")
-    else:
+            error = log_in(username, hashed_password)
+            if error:
+                return render_template('login.html', error=error)
+            return redirect(next) if next else redirect(url_for('index'))
+        
         return render_template('login.html')
+
+def log_in(username, hashed_password):
+    try:
+        user = um.get_user(username, hashed_password)
+        session['user_id'] = user.id
+        session['username'] = user.name
+        session['role'] = user.role.value
+        session['email'] = user.email
+        session['current_player_id'] = user.current_player_id
+        return None
+    except ValueError:
+        return "Неверный пароль"
+    except KeyError:
+        return "Пользователя с таким именем не существует"
+
 
 @app.route('/logout')
 def logout():
@@ -120,7 +131,8 @@ def register():
         if password != confirm_password:
             return render_template('register.html', error="Пароли не совпадают")
         
-        hashed_password = bcrypt.hashpw(password.encode())
+        pbytes = password.encode('utf8')
+        hashed_password = bcrypt.hashpw(pbytes, bcrypt.gensalt()).decode('utf8')
 
         if um.new_user(username, hashed_password, Role.user, email) == Status.ok:
             session['temp_username'] = username
@@ -136,10 +148,34 @@ def register():
 @admin_required
 def create_tournament():
     if request.method == 'POST':
-        name = request.form['name']
-        date = request.form['date']
-        rounds = request.form['rounds']
-        t_id = tm.create(name, session['user_id'], date, rounds)
+        try:
+            datetime_str = f"{request.form.get('date')} {request.form.get('time')}"
+            start_datetime = datetime.strptime(datetime_str, '%Y-%m-%d %H:%M')
+            print("ENTERED date = ", start_datetime)
+        except (ValueError, TypeError) as e:
+            return f"Ошибка формата даты/времени: {str(e)}", 400
+        
+        if start_datetime <= datetime.now():
+            return "Дата турнира должна быть в будущем"
+        
+        is_online = request.form.get('location-type') == 'online'
+
+        tournament_data = {
+            'name': request.form.get('name'),
+            'admin_id': session['user_id'],
+            'start_time': start_datetime,
+            'prize': int(request.form.get('prize', 0)),
+            'system': request.form.get('system'),
+            'base_time': int(request.form.get('base_time_min'))*60 + int(request.form.get('base_time_sec')),
+            'fischer': int(request.form.get('fischer', 0)),
+            'place': 'online' if is_online else request.form.get('address'),
+            'total_rounds': request.form.get('total_rounds')
+        }
+        
+        print("RECEIVED data ", tournament_data)
+
+        t_id = tm.create(tournament_data)
+        
         print("CREATED Tournament with id=",t_id)
         return redirect(url_for('manage_tournament', tournament_id=t_id))
     return render_template('create_tournament.html')
@@ -150,7 +186,7 @@ def create_tournament():
 def add_player():
     if request.method == 'POST':
         name = request.form['name']
-        rating = request.form.get('rating', 1000)
+        rating = int(request.form.get('rating', 1000))
         try:
             pm.new_player(name, rating)
             return redirect(url_for('players_list'))
@@ -168,99 +204,116 @@ def players_list():
                            players=players,
                            is_admin=session.get('role') == Role.admin.value)
 
-@app.route('/tournaments/<int:tournament_id>')
+@app.route('/tournaments/<int:tournament_id>', methods=['GET','POST'])
 def manage_tournament(tournament_id):
-    tournament = tm.get_by_id(tournament_id)
-    if not tournament:
-        return page_not_found(f"Tournament {tournament_id} not found")
-    
-    players = tournament.players
-
-    matches = tm.get_matches(tournament_id)
-
-    is_admin = 'role' in session and session['role'] == Role.admin.value
-    
-    player_rounds = {}
-    player_standings = []
-    player_buchholz = []
-
-    rounds = {}
-    for match in matches:
-        if match.round not in rounds:
-            rounds[match.round] = []
-        rounds[match.round].append(match)
-
-    for player in players:
-        player_results = {}
-        for round_num in range(1, tournament.total_rounds + 1):
-            player_results[round_num] = {'opponent': None, 'result': None, 'points': 0}
+    if request.method == 'GET':
         
-        for round_num, round_matches in rounds.items():
-            for match in round_matches:
-                if match.player1 and match.player1.id == player.id:
-                    opponent = match.player2
-                    if match.result == '1-0':
-                        points = 1
-                    elif match.result == '0-1':
-                        points = 0
-                    elif match.result == '1/2-1/2':
-                        points = 0.5
-                    else:
-                        points = 0
-                    player_results[round_num] = {
-                        'opponent': opponent.id,
-                        'result': match.result,
-                        'points': points
-                    }
-                elif match.player2 and match.player2.id == player.id:
-                    opponent = match.player1
-                    if match.result == '1-0':
-                        points = 0
-                    elif match.result == '0-1':
-                        points = 1
-                    elif match.result == '1/2-1/2':
-                        points = 0.5
-                    else:
-                        points = 0
-                    player_results[round_num] = {
-                        'opponent': opponent.id,
-                        'result': match.result,
-                        'points': points
-                    }
+        tournament = tm.get_by_id(tournament_id)
+        if not tournament:
+            return page_not_found(f"Tournament {tournament_id} not found")
         
-        player_rounds[player.id] = player_results
-    
-    if tournament.is_finished:
-        tournament.calculate_buchholz()
-        sorted_players = sorted(tournament.players, key=lambda p: (p.points, p.buchholz), reverse=True)
-        place = 1
-        last_points = -1
-        last_buch = -1
-        for idx, player in enumerate(sorted_players):
-            if player.points != last_points or last_buch != player.buchholz:
-                place = idx + 1
-                last_points = player.points
-                last_buch = player.buchholz
-            player_standings.append({
-                'id': player.id,
-                'place': place
-            })
-            player_buchholz.append({
-                'id': player.id,
-                'coef': player.buchholz
-            })
+        players = tournament.players
 
-    
-    return render_template('manage_tournament.html',
-                           tournament_id=tournament.id,
-                           tournament=tournament,
-                           players=players,
-                           player_rounds=player_rounds,
-                           player_standings=player_standings,
-                           player_buchholz=player_buchholz,
-                           matches=matches,
-                           is_admin=is_admin,
-                           is_finished=tournament.is_finished)
+        matches = tm.get_matches(tournament_id)
+
+        is_admin = 'role' in session and session['role'] == Role.admin.value
+        
+        player_rounds = {}
+        player_standings = []
+
+        rounds = {}
+        if tournament.current_round > 0:
+            for match in matches:
+                if match.round not in rounds:
+                    rounds[match.round] = []
+                rounds[match.round].append(match)
+            
+            for player in players:
+                player_results = {}
+                for round_num in range(1, tournament.total_rounds + 1):
+                    player_results[round_num] = {'opponent': None, 'result': None, 'points': 0}
+                
+                for round_num, round_matches in rounds.items():
+                    for match in round_matches:
+                        if match.player1 and match.player1.id == player.id:
+                            opponent = match.player2
+                            if match.result == '1-0':
+                                points = 1
+                            elif match.result == '0-1':
+                                points = 0
+                            elif match.result == '1/2-1/2':
+                                points = 0.5
+                            else:
+                                points = 0
+                            player_results[round_num] = {
+                                'opponent': opponent.id,
+                                'result': match.result,
+                                'points': points
+                            }
+                        elif match.player2 and match.player2.id == player.id:
+                            opponent = match.player1
+                            if match.result == '1-0':
+                                points = 0
+                            elif match.result == '0-1':
+                                points = 1
+                            elif match.result == '1/2-1/2':
+                                points = 0.5
+                            else:
+                                points = 0
+                            player_results[round_num] = {
+                                'opponent': opponent.id,
+                                'result': match.result,
+                                'points': points
+                            }
+                
+                player_rounds[player.id] = player_results
+            
+            if tournament.is_finished:
+                tournament.calculate_buchholz()
+                sorted_players = sorted(tournament.players, key=lambda p: (p.points, p.buchholz), reverse=True)
+                place = 1
+                last_points = -1
+                last_buch = -1
+                for idx, player in enumerate(sorted_players):
+                    if player.points != last_points or last_buch != player.buchholz:
+                        place = idx + 1
+                        last_points = player.points
+                        last_buch = player.buchholz
+                    player_standings.append({
+                        'id': player.id,
+                        'place': place,
+                        'coef': player.buchholz
+                    })
+        
+        this_player = None
+        is_registered = False
+        if ('current_player_id' in session) and (session['current_player_id'] is not None):
+            this_player = pm.get_player_by_id(session['current_player_id'])
+            print("I control ", this_player)
+            if not tournament.is_started:
+                for player in players:
+                    if player.id == session['current_player_id']:
+                        is_registered = True
+                        break
+            
+        return render_template('manage_tournament.html',
+                            tournament_id=tournament.id,
+                            tournament=tournament,
+                            players=players,
+                            players_num=len(players),
+                            player_rounds=player_rounds,
+                            player_standings=player_standings,
+                            matches=matches,
+                            this_player=this_player,
+                            is_loggedin='user_id' in session,
+                            is_admin=is_admin,
+                            is_finished=tournament.is_finished,
+                            is_registered=is_registered)
+    else:
+        player_id = session['current_player_id']
+        tm.add_player(tournament_id, player_id)
+        return redirect(url_for('manage_tournament'), tournament_id)
+
 
 @app.route('/tournaments')
 def tournaments_list():
@@ -284,7 +337,7 @@ def tournaments_list():
 def register_player(tournament_id):
     player_id = session['current_player_id']
     tm.add_player(tournament_id, player_id)
-    return redirect(url_for('tournaments_list'))
+    return redirect(url_for('manage_tournament'), tournament_id=tournament_id)
 
 @app.route('/players/add/<int:tournament_id>', methods=['GET', 'POST'])
 @login_required
@@ -389,13 +442,23 @@ def player_profile():
 @login_required
 def create_player():
     if request.method == 'POST':
+
+        if 'code' in request.form:
+            id = pm.connect_with_user(session['user_id'], request.form['code'])
+            if id:
+                session['current_player_id'] = id
+                return redirect(url_for('index'))
+            return render_template('create_player.html', error='Такого секретного кода не существует')
+        
         name = request.form['surname'] + ' ' + request.form['name']
-        rating = request.form.get('rating', 1000)
+        city = request.form['city']
+        ingo = ingo_from(0)
         user_id = session['user_id']
         
         try:
-            pm.new_player_with_user(name, rating, user_id)
-            return redirect(url_for('player_profile'))
+            id = pm.new_player_with_user(name, city, ingo, user_id)
+            session['current_player_id'] = id
+            return redirect(url_for('index'))
         except Exception as e:
             return render_template('create_player.html', error=str(e))
     

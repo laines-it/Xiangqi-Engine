@@ -26,7 +26,8 @@ class Database:
                 c.execute("DROP TABLE players")
                 c.execute("DROP TABLE users")
                 conn.commit() 
-        self.init_db()                           
+        self.init_db()   
+        print("DATABASE RESTARTED")                        
 
     def init_db(self):
         with self.connect() as conn:
@@ -40,8 +41,10 @@ class Database:
                                         
                 c.execute('''CREATE TABLE IF NOT EXISTS players ( 
                                 id SERIAL PRIMARY KEY,
-                                user_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+                                user_id INTEGER DEFAULT NULL REFERENCES users(id) ON DELETE SET NULL ,
                                 name VARCHAR(100) UNIQUE NOT NULL,
+                                city VARCHAR(50) NOT NULL,
+                                connect_code INTEGER DEFAULT NULL,
                                 tournaments_played SMALLINT DEFAULT 0,
                                 ingo SMALLINT NOT NULL DEFAULT 1000 CHECK (ingo >= 0))''')
 
@@ -51,6 +54,11 @@ class Database:
                                 name VARCHAR(100) NOT NULL,
                                 date TIMESTAMP NOT NULL,
                                 status VARCHAR(20) NOT NULL DEFAULT 'upcoming',
+                                prize INTEGER DEFAULT 0,
+                                system VARCHAR(20) NOT NULL,
+                                time_control SMALLINT NOT NULL,
+                                fischer_time_control SMALLINT DEFAULT NULL,
+                                place VARCHAR(150) NOT NULL,
                                 total_rounds SMALLINT NOT NULL CHECK (total_rounds > 0),
                                 current_round SMALLINT NOT NULL DEFAULT 0 CHECK (current_round >= 0),
                                 CONSTRAINT valid_status CHECK (status IN ('upcoming', 'ongoing', 'finished')))''')
@@ -79,9 +87,10 @@ class Database:
                 c.execute("CREATE INDEX IF NOT EXISTS idx_matches_player2 ON matches(player2_id)")
                 c.execute("CREATE INDEX IF NOT EXISTS idx_player_ingo ON players(ingo ASC)")
                 c.execute("CREATE INDEX IF NOT EXISTS idx_player_user ON players(user_id)")
+                c.execute("CREATE INDEX IF NOT EXISTS idx_player_user ON players(connect_code)")
 
-                admin_pass = os.environ.get('ADMIN_PASSWORD').encode('utf-8')
-                admin_hash_pass = bcrypt.hashpw(admin_pass, bcrypt.gensalt())
+                admin_pass = os.environ.get('ADMIN_PASSWORD').encode('utf8')
+                admin_hash_pass = bcrypt.hashpw(admin_pass, bcrypt.gensalt()).decode('utf8')
                 c.execute('''INSERT INTO users (username, password, role) 
                             VALUES (%s, %s, %s)
                             ON CONFLICT (username) DO NOTHING''', 

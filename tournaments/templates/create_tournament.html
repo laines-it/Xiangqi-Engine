@@ -1,18 +1,180 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Создать турнир</title>
-</head>
-<body>
-    <h1>Создать новый турнир</h1>
-    <form method="POST">
-        <label for="name">Название турнира:</label>
-        <input type="text" id="name" name="name" required>
-        <label for="date">Дата:</label>
-        <input type="date" id="date" name="date" required>
-        <label for="rounds">Количество раундов:</label>
-        <input type="text" id="rounds" name="rounds" required>
-        <button type="submit">Создать</button>
-    </form>
-</body>
-</html>
+{% extends "base.html" %}
+
+{% block content %}
+  <main class="container">
+    <section class="create-tournament">
+      <div class="section-title">
+        <h2>Создать турнир</h2>
+      </div>
+      
+      
+      <form method="POST" action="/tournaments/new" class="tournament-form chinese-border">
+        <!-- Название турнира -->
+        <div class="form-group">
+          <label for="tournament-name"><i class="fas fa-dragon"></i> Название турнира</label>
+          <input type="text" id="tournament-name" name="name" placeholder="Введите название турнира" required>
+        </div>
+        
+        <!-- Дата и время -->
+        <div class="form-row">
+          <div class="form-group">
+            <label for="tournament-date"><i class="fas fa-calendar-alt"></i> Дата начала</label>
+            <input type="date" id="tournament-date" name="date" required>
+          </div>
+          
+          <div class="form-group">
+            <label for="tournament-time"><i class="fas fa-clock"></i> Время начала</label>
+            <input type="time" id="tournament-time" name="time" required>
+          </div>
+        </div>
+        
+        <!-- Призовой фонд -->
+        <div class="form-group">
+          <label for="prize-fund"><i class="fas fa-trophy"></i> Призовой фонд (₽)</label>
+          <input type="number" id="prize-fund" name="prize" min="-1" step="1000" placeholder="Укажите сумму призового фонда" value="0">
+          <div class="hint-container">
+            <div class="hint-trigger">?
+              <div class="hint-text">Оставьте поле пустым, если турнир без призового фонда</div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Контроль времени -->
+        <div class="form-group">
+          <label><i class="fas fa-hourglass-half"></i> Контроль времени</label>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label for="base-time-min">Контроль времени: </label>
+              <input type="number" id="base-time-min" name="base_time_min" min="1" max="180" value="30" required>
+              <label for="base-time-min">мин</label>
+
+              <input type="number" id="base-time-sec" name="base_time_sec" min="0" max="59" value="0" required>
+              <label for="base-time-sec">сек</label>
+            </div>
+
+            <div class="form-group">
+              <label for="fischer">Добавление Фишера (сек)</label>
+              <input type="number" id="fischer" name="fischer" min="0" max="60" value="5">
+              <div class="hint-container">
+                <div class="hint-trigger">?
+                  <div class="hint-text">Добавление времени после каждого хода (0 - без добавления)</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Место проведения -->
+        <div class="form-group">
+          <label><i class="fas fa-map-marker-alt"></i> Место проведения</label>
+          
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="location-type" value="offline" checked>
+              <span class="radio-custom"></span>
+              <i class="fas fa-building"></i> Оффлайн
+            </label>
+
+            <label class="radio-option">
+              <input type="radio" name="location-type" value="online">
+              <span class="radio-custom"></span>
+              <i class="fas fa-globe"></i> Онлайн
+            </label>
+          </div>
+            
+            <div class="form-group" id="address" style="display: block;">
+              <label for="address">Адрес</label>
+              <input type="text" id="address" name="address" placeholder="Укажите полный адрес">
+            </div>
+          </div>
+        </div>
+        
+        <div class="form-group">
+          <label for="total_rounds"><i class="fas fa-chess-board"></i> Количество раундов</label>
+          <input type="number" id="total_rounds" name="total_rounds" min="1" max="20" value="5" required>
+        </div>
+        
+        <div class="form-group">
+          <label><i class="fas fa-cog"></i>Система жеребьевки</label>
+          
+          <div class="radio-group">
+            <label class="radio-option">
+              <input type="radio" name="system" value="swiss" checked>
+              <span class="radio-custom"></span>
+              <i class="fa-solid fa-scale-balanced"></i> Швейцарская
+            </label>
+            
+            <label class="radio-option">
+              <input type="radio" name="system" value="roundrobin">
+              <span class="radio-custom"></span>
+              <i class="fa-solid fa-arrows-spin"></i> Круговая
+            </label>
+            
+            <label class="radio-option">
+              <input type="radio" name="system" value="macmahon">
+              <span class="radio-custom"></span>
+              <i class="fa-solid fa-scale-unbalanced"></i> МакМагон
+            </label>
+          </div>
+        </div>
+        
+        <div class="form-buttons">
+          <button type="submit" class="btn btn-primary">
+            <i class="fas fa-plus-circle"></i> Создать турнир
+          </button>
+          <button type="reset" class="btn btn-secondary">
+            <i class="fas fa-redo"></i> Сбросить
+          </button>
+        </div>
+      </form>
+    </section>
+    
+    <!-- Информационный блок -->
+    <section class="info-section">
+      <div class="section-title">
+        <h2>Рекомендации</h2>
+      </div>
+      
+      <div class="info-cards">
+        <div class="info-card">
+          <i class="fas fa-lightbulb"></i>
+          <h3>Название турнира</h3>
+          <p>Выберите запоминающееся название, отражающее суть события. Например: "Весенний кубок Пекина" или "Онлайн-турнир Мастера сянци".</p>
+        </div>
+        
+        <div class="info-card">
+          <i class="fas fa-clock"></i>
+          <h3>Контроль времени</h3>
+          <p>Стандартные форматы: 15+3 (быстрые), 30+5 (рапид), 60+10 (классика). Для новичков подойдет 10+0.</p>
+        </div>
+        
+        <div class="info-card">
+          <i class="fas fa-trophy"></i>
+          <h3>Призовой фонд</h3>
+          <p>Укажите призовой фонд только если готовы гарантировать выплаты. Для бесплатных турниров оставьте поле пустым.</p>
+          <p>
+        </div>
+      </div>
+  </main>
+{% endblock %}
+
+{% block script %}
+<script>
+    document.querySelectorAll('input[name="location-type"]').forEach(radio => {
+      radio.addEventListener('change', function() {
+        if (this.value === 'online') {
+          // document.getElementById('online-details').style.display = 'block';
+          document.getElementById('address').style.display = 'none';
+        } else {
+          // document.getElementById('online-details').style.display = 'none';
+          document.getElementById('address').style.display = 'block';
+        }
+      });
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('tournament-date').min = today;
+
+  </script>
+{% endblock %}

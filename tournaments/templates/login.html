@@ -1,45 +1,62 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Вход в систему</title>
-    <style>
-        body { font-family: Arial, sans-serif; max-width: 400px; margin: 50px auto; padding: 20px; }
-        .form-container { background: #f9f9f9; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
-        h1 { text-align: center; color: #333; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 10px; border: 1px solid #ddd; border-radius: 4px; }
-        button { width: 100%; padding: 10px; background-color: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer; }
-        .error { color: #e74c3c; margin-bottom: 15px; }
-        .links { text-align: center; margin-top: 20px; }
-        .links a { color: #3498db; text-decoration: none; }
-    </style>
-</head>
+{% extends 'base.html' %}
+
+{% block content %}
 <body>
-    <div class="form-container">
-        <h1>Вход в систему</h1>
-        
-        {% if error %}
-            <div class="error">{{ error }}</div>
-        {% endif %}
-        
-        <form method="POST">
-            <div class="form-group">
-                <label for="username">Имя пользователя:</label>
-                <input type="text" id="username" name="username" required>
+    <div class="container" style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+        <section class="tournaments" style="max-width: 500px; width: 100%;">
+            <div class="tournament-header" style="text-align: center; margin-bottom: 2rem;">
+                <div class="section-title" style="justify-content: center;">
+                    <h2><i class="fa-solid fa-user-lock"></i> Вход в систему</h2>
+                </div>
             </div>
             
-            <div class="form-group">
-                <label for="password">Пароль:</label>
-                <input type="password" id="password" name="password" required>
-            </div>
+            {% if error %}
+                <div class="error" style="text-align: center; margin-bottom: 1.5rem; color: var(--red);">
+                    {{ error }}
+                </div>
+            {% endif %}
             
-            <button type="submit">Войти</button>
-        </form>
-        
-        <div class="links">
-            <a href="{{ url_for('register') }}">Регистрация</a>
-        </div>
+            <form method="POST" style="padding: 2rem; background: rgba(60, 45, 35, 0.7); border-radius: 12px;">
+                <div class="form-group" style="margin-bottom: 1.5rem;">
+                    <label for="username" style="display: block; margin-bottom: 0.5rem; color: var(--light-paper);">
+                        <i class="fa-solid fa-user"></i> Имя пользователя
+                    </label>
+                    <input type="text" id="username" name="username" required 
+                           style="width: 100%; padding: 0.8rem; border-radius: 8px; 
+                                  border: 1px solid rgba(255, 183, 0, 0.3); 
+                                  background: rgba(30, 30, 30, 0.7); 
+                                  color: var(--paper); 
+                                  transition: all 0.3s ease;">
+                </div>
+                
+                <div class="form-group" style="margin-bottom: 2rem;">
+                    <label for="password" style="display: block; margin-bottom: 0.5rem; color: var(--light-paper);">
+                        <i class="fa-solid fa-lock"></i> Пароль
+                    </label>
+                    <input type="password" id="password" name="password" required 
+                           style="width: 100%; padding: 0.8rem; border-radius: 8px; 
+                                  border: 1px solid rgba(255, 183, 0, 0.3); 
+                                  background: rgba(30, 30, 30, 0.7); 
+                                  color: var(--paper); 
+                                  transition: all 0.3s ease;">
+                </div>
+                
+                <div style="text-align: center; margin-bottom: 1.5rem;">
+                    <button type="submit" class="btn btn-primary"  
+                            style="padding: 0.8rem 2rem; font-size: 1.1rem;">
+                        Войти
+                    </button>
+                </div>
+                
+                <div style="text-align: center; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.5rem;">
+                    <p style="color: #d6c8b5; margin-bottom: 1rem;">
+                        Ещё нет аккаунта?
+                    </p>
+                    <a href="{{ url_for('register') }}" class="btn btn-secondary">
+                        <i class="fa-solid fa-user-plus"></i> Зарегистрироваться
+                    </a>
+                </div>
+            </form>
+        </section>
     </div>
-</body>
-</html>
+{% endblock %}

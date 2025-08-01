@@ -1,163 +1,146 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Турнирная система</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
-</head>
-<body>
-    <h1>Турниры</h1>
-    
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
-            <a href="{{ url_for('create_tournament') }}" class="btn" 
-            style="${is_admin ? 'display: none' : 'display: block'}">Создать новый турнир</a>
-            <a href="{{ url_for('players_list') }}" class="btn" style="background-color: #9b59b6;">Список игроков</a>
-            <a href="{{ url_for('add_player') }}" class="btn" 
-            style="background-color: #2ecc71; {% if not is_admin %}display: none;{% endif %}">Добавить игрока</a>
-            <a href="{{ url_for('exec_query') }}" class="btn" 
-            style="background-color: #cc2eb4; {% if not is_local %}display: none;{% endif %}">Выполнить локальный запрос</a>
-            <a href="{{ url_for('tournaments_list') }}" class="btn" style="background-color: #746610;">Все турниры</a>
-        </div>
-        
-        <div>
-            {% if 'username' in session %}
-                <span style="margin-right: 15px;">Привет, {{ session['username'] }}!</span>
-                <a href="{{ url_for('player_profile') }}">Мой профиль</a>
-                <a href="{{ url_for('logout') }}" class="btn" style="background-color: #e74c3c;">Выйти</a>
-            {% else %}
-                <a href="{{ url_for('login') }}" class="btn" style="background-color: #3498db;">Войти</a>
-                <a href="{{ url_for('register') }}" class="btn" style="background-color: #2ecc71;">Регистрация</a>
-            {% endif %}
-        </div>
-    </div>
+{% extends "base.html" %}
 
-    <!-- В разделе "Все турниры" добавим проверку прав для кнопки удаления -->
-    <td>
-        {% if is_admin and tournament%}
-        <form action="{{ url_for('delete_tournament', tournament_id=tournament.id) }}" method="POST" style="display: inline;">
-            <button type="submit" class="btn btn-danger">Удалить</button>
-        </form>
+{% block content %}
+  <section class="hero">
+    <div class="chinese-pattern pattern-1"></div>
+    <div class="chinese-pattern pattern-2"></div>
+    
+    <h1>
+      Турниры по сянци
+    </h1>
+    <p>Присоединяйтесь к древнейшей интеллектуальной традиции Китая! Участвуйте в турнирах, совершенствуйте стратегию и соревнуйтесь с лучшими игроками со всего мира.</p>
+    <div class="hero-buttons">
+      <button class="btn btn-primary">Предстоящие турниры</button>
+      <button class="btn btn-secondary">Научиться играть</button>
+    </div>
+  </section>
+
+  <div class="container">
+    <section class="tournaments">
+      <div class="section-title">
+        <h2>Ближайшие турниры</h2>
+        {% if is_admin %}
+        <a href="{{ url_for('create_tournament') }}" class="btn btn-primary">Создать новый турнир</a>
         {% endif %}
-    </td>
+      </div>
+      
+      <!-- <div class="tournament-filters">
+        <button class="filter-btn active">Все</button>
+        <button class="filter-btn">Открытые</button>
+        <button class="filter-btn">Премиум</button>
+        <button class="filter-btn">Онлайн</button>
+        <button class="filter-btn">Оффлайн</button>
+      </div> -->
+
+        {% if tournaments %}
+        {% for tournament in tournaments %}
+          <div class="tournament-card">
+
+              <div class="tournament-header">
+              <div class="tournament-title">
+                  <i class="fas fa-dragon"></i>
+                  {{ tournament.name }}
+              </div>
+
+              {% if tournament.status == 'upcoming' %}
+                  <div class="status open">Открыта регистрация</div>
+              {% elif tournament.status == 'ongoing' %}
+                  <div class="status closed">Идет</div>
+              {% elif tournament.status == 'finished' %}
+                  <div class="status finished">Завершен</div>
+              {% endif %}
+              </div>
+              
+              <div class="tournament-details">
+                  <div class="detail-item">
+                      <i class="fas fa-calendar-alt"></i>
+                      <span>{{ tournament.display_date() }}</span>
+                  </div>
+                  <div class="detail-item">
+                      <i class="fa-solid fa-clock"></i>
+                      <span>Начало в {{ tournament.display_time() }}</span>
+                  </div>
+
+                  {% if tournament.prize != 0%}
+                  <div class="detail-item">
+                      <i class="fas fa-trophy"></i>
+                      {% if tournament.prize == -1 %}
+                          <span>Гарантированный приз</span>
+                          <div class="hint-trigger">?
+                              <div class="hint-text">Порядок выбора приза определяется результатами турнира</div>
+                          </div>
+                      {% else %}
+                          <span>Призовой фонд: {{tournament.prize}}₽</span>
+                      {% endif %}
+                  </div>
+                  {% endif %}
+
+                  <div class="detail-item">
+                      <i class="fa-solid fa-hourglass-half"></i>
+                      <span>Контроль времени: {{ tournament.display_time_control() }}</span>
+                  </div>
+                  
+                  <div class="detail-item">
+                      {% if tournament.place == 'online' %}
+                          <i class="fas fa-globe"></i>
+                          <span>Онлайн</span>
+                      {% else %}
+                          <i class="fas fa-map-marker-alt"></i>
+                          <span>{{ tournament.place }}</span>
+                      {% endif %}
+                  </div>
+              </div>
+
+              <div class="tournament-footer">
+                  {% if tournament.status == 'upcoming' %}
+                      <a href="{{ url_for('manage_tournament', tournament_id=tournament.id) }}" class="register-btn">Зарегистрироваться</a>
+                  {% elif tournament.status == 'ongoing' %}
+                      <div class="participants">
+                          <div class="participant">{{ tournament.current_round }}/{{ tournament.total_rounds }}</div>
+                          <span>тур</span>
+                      </div>
+                      <div class="status closed">Идет</div>
+                  {% elif tournament.status == 'finished' %}
+                      <div class="status finished">Завершен</div>
+                  {% endif %}
+              </div>
+          </div>
+        {% endfor %}
+        {% endif %}
+    </section>
     
-    
-    <div class="container">
+    <section class="leaderboard">
+      <div class="section-title">
+        <h2>Топ игроков</h2>
+      </div>
+      {% if players %}
+      {% for player in players %}
+        {% set place = loop.index %}
+        <div class="player">
+          {% if place > 3 %}
+            <div class="rank">{{place}}</div>
+          {% elif place == 3 %}
+            <div class="rank top3">{{place}}</div>
+          {% elif place == 2 %}
+            <div class="rank top2">{{place}}</div>
+          {% else %}
+            <div class="rank top1">{{place}}</div>
+          {% endif %}
+          <div class="player-info">
+            <div class="player-name">{{ player.name }}</div>
+            <div class="player-country">{{ player.city }}</div>
+          </div>
+          <div class="player-rating">{{ player.rating }} 
+            <!-- <span class="player-change up"></span> -->
+          </div> 
+        </div>
+      {% endfor%}
+      {% else %}
+        <div class="player-list-item">
+            <span>Пока нет игроков</span>
+        </div>
+      {% endif %}
 
-<!-- Players Section -->
-<div class="section">
-    <h2>Все игроки</h2>
-    {% if players %}
-    <table>
-        <thead>
-            <tr>
-                <th>Имя</th>
-                <th>Рейтинг</th>
-                {% if is_admin %}
-                <th>Действия</th>  <!-- Added Actions column -->
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for player in players %}
-            <tr>
-                <td>{{ player.name }}</td>
-                <td>{{ player.rating }}</td>
-                {% if is_admin %}
-                <td>
-                    <form action="{{ url_for('delete_player', player_id=player.id) }}" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-danger">Удалить</button>
-                    </form>
-                </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>Игроки не найдены</p>
-    {% endif %}
-</div>
-
-<!-- Tournaments Section -->
-<div class="section">
-    <h2>Все турниры</h2>
-    {% if tournaments %}
-    <table>
-        <thead>
-            <tr>
-                <th>Название</th>
-                <th>Дата</th>
-                <th>Тур</th>
-                {% if is_admin %}
-                <th>Статус</th>
-                <th>Действия</th>
-                {% endif %}
-            </tr>
-        </thead>
-        <tbody>
-            {% for tournament in tournaments %}
-            <tr>
-                <td>
-                    <a href="{{ url_for('manage_tournament', tournament_id=tournament.id) }}">
-                        {{ tournament.name }}
-                    </a>
-                </td>
-                <td>{{ tournament.date }}</td>
-                <td>{{ tournament.current_round }}/{{ tournament.total_rounds }}</td>
-                {% if is_admin %}
-                <td>
-                    {% if tournament.status == 'upcoming' %}
-                        <span class="status-active">Планируется</span>
-                    {% else %}
-                    {% if tournament.status == 'ongoing' %}
-                    <span class="status-completed">Идет</span>
-                    {% else %}
-                    <span class="status-completed">Завершен</span>
-                    {% endif %}
-                    {% endif %}
-                </td>
-                <td>
-                    {% if is_admin and tournament.status == 'upcoming' %}  <!-- Only for upcoming tournaments -->
-                    <form action="{{ url_for('delete_tournament', tournament_id=tournament.id) }}" method="POST" style="display: inline;">
-                        <button type="submit" class="btn btn-danger">Удалить</button>
-                    </form>
-                    {% endif %}
-                </td>
-                {% endif %}
-            </tr>
-            {% endfor %}
-        </tbody>
-    </table>
-    {% else %}
-        <p>Турниры не найдены</p>
-    {% endif %}
-</div>
-
-    {% if tournament_stats and tournaments %}
-    <div class="section">
-        <h2>Статистика турниров</h2>
-        <table>
-            <thead>
-                <tr>
-                    <th>Турнир</th>
-                    <th>Участников</th>
-                    <th>Матчей</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for tournament in tournaments %}
-                {% set stats = tournament_stats | selectattr("id", "equalto", tournament.id) | first %}
-                {% if stats %}
-                <tr>
-                    <td>{{ tournament.name }}</td>
-                    <td>{{ stats.player_count }}</td>
-                    <td>{{ stats.match_count }}</td>
-                </tr>
-                {% endif %}
-                {% endfor %}
-            </tbody>
-        </table>
-    </div>
-    {% endif %}
-</body>
-</html>
+    </section>
+  </div>
+{% endblock %}

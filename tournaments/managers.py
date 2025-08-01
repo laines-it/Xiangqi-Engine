@@ -11,10 +11,11 @@ def ingo_from(rating):
     return (2750 - rating)/7
 
 class UserManager:
+
     def __init__(self, db : Database):
         self.db = db
 
-    def get_user(self, name, password_bytes) -> User:
+    def get_user(self, name, password) -> User:
         query = '''SELECT u.id, u.username, u.role, u.email,
                           p.id, u.password
                     FROM users u
@@ -27,11 +28,15 @@ class UserManager:
         packed = self.db.process_query(self.parse, query, params=(name,), limit=1)
         if packed:
             user = packed[0]
-            return user if user.auth(password_bytes) else User(-1)
-        return None
+            if user.auth(password):
+                print("FINE auth")
+                return user
+            else:
+                raise ValueError
+        raise KeyError
     
     def new_user(self, username, hash_password, role : Role, email):
-        password = hash_password.decode('utf-8')
+        password = hash_password
         query = "INSERT INTO users (username, password, role, email) VALUES (%s, %s, %s, %s) RETURNING id"
         try:
             id = self.db.execute_query(query, (username, password, role.value, email), commit=True)
@@ -68,11 +73,11 @@ class PlayerManager:
         query = '''SELECT p.id
                    WHERE p.name=%s
                 '''
-        row = self.db.execute_query(query, (name), fetchone=True)
+        row = self.db.execute_query(query, (name,), fetchone=True)
         return row[0] if row else None
 
     def get_player_tnmt(self, id) -> TnmtPlayer:
-        query = '''SELECT p.id, p.user_id, p.name, p.ingo,
+        query = '''SELECT p.id, p.user_id, p.name, p.city, p.ingo,
                           tp.tournament_id, tp.points, tp.color_balance,
                           ''' + get_opponents_json + '''
                     FROM players p
@@ -84,25 +89,25 @@ class PlayerManager:
         return packed[0] if packed else None
 
     def get_all(self):
-        query = "SELECT id, user_id, name, ingo FROM players ORDER BY ingo ASC"
+        query = "SELECT id, user_id, name, city, ingo FROM players ORDER BY ingo ASC"
         return self.db.process_query(self.parse, query)
 
     def parse(self, row):
         p = Player(id=row[0],
-                    user_id=row[1],name=row[2],ingo=ingo_from(row[3]))
+                    user_id=row[1],name=row[2], city=row[3], ingo=row[4])
         return p
     
     def parse_tnmt(self, row):
         p = TnmtPlayer(id=row[0],
-                    user_id=row[1],name=row[2],ingo=ingo_from(row[3]),
-                    tnmt_id=row[4],points=row[5],color_balance=row[6],
-                    opponents=row[7])
+                    user_id=row[1],name=row[2], city=row[3], ingo=row[4],
+                    tnmt_id=row[5],points=row[6],color_balance=row[7],
+                    opponents=row[8])
         return p
     
-    def new_player(self, name, ingo):
-        query = "INSERT INTO players (name, ingo) VALUES (%s, %s) RETURNING id"
-        id = self.db.execute_query(query, (name, ingo), commit=True)
-        print(f"ADDED PLAYER {name},{rating_from(ingo)}. id = {id}")
+    def new_player(self, name, city, ingo):
+        query = "INSERT INTO players (name, city, ingo) VALUES (%s, %s, %s) RETURNING id"
+        id = self.db.execute_query(query, (name, city, ingo), commit=True)
+        print(f"ADDED PLAYER {name},{rating_from(ingo)}, from {city}. id = {id}")
         return id
 
     def delete_player(self, player_id):
@@ -114,19 +119,20 @@ class PlayerManager:
             return Status.failed
         
     def get_player_by_id(self, id):
-        query = "SELECT id, user_id, name, ingo FROM players WHERE id=%s"
+        query = "SELECT id, user_id, name, city, ingo FROM players WHERE id=%s"
         players = self.db.process_query(self.parse, query, (id,), limit=1)
         return players[0] if players else None
     
     def get_player_by_user_id(self, user_id):
-        query = "SELECT id, user_id, name, ingo FROM players WHERE user_id=%s"
+        query = "SELECT id, user_id, name, city, ingo FROM players WHERE user_id=%s"
         players = self.db.process_query(self.parse, query, (user_id,), limit=1)
         return players[0] if players else None
 
-    def new_player_with_user(self, name, ingo, user_id):
-        query = "INSERT INTO players (name, ingo, user_id) VALUES (%s, %s, %s) RETURNING id"
+    def new_player_with_user(self, name, city, ingo, user_id):
+        query = "INSERT INTO players (name, city, ingo, user_id) VALUES (%s, %s, %s, %s) RETURNING id"
         try:
-            id = self.db.execute_query(query, (name, ingo, user_id), commit=True)
+            id = self.db.execute_query(query, (name, city, ingo, user_id), commit=True)
+            print(f"ADDED player {name} from {city} connected to {user_id}")
             return id
         except Exception as e:
             raise Exception("Ошибка при создании игрока: " + str(e))
@@ -177,17 +183,58 @@ class PlayerManager:
             'name': row[1]
         }, query, (player_id,))
 
+    def connect_with_user(self, user_id, code):
+        query = """
+            SELECT id
+            FROM players
+            WHERE connect_code = %s
+        """
+        id = self.db.execute_query(query, (code,), fetchone=True)
+        if id:
+            query = """
+                UPDATE players
+                SET user_id = %s,
+                    connect_code = NULL
+                WHERE id = %s
+            """ 
+            try:
+                self.db.execute_query(query, (user_id, id), commit=True)
+                return id
+            except:
+                return None
+            
+        return None
+
+    def get_players(self, tournament_id) -> list[Player]:
+        query = '''
+            SELECT pl.id, pl.user_id, pl.name, pl.city, pl.ingo,
+                   tp.tournament_id, tp.points, tp.color_balance,
+            ''' + get_opponents_json + '''
+            FROM tournament_players tp
+            JOIN players pl ON tp.player_id = pl.id
+            WHERE tp.tournament_id = %s'''
+        return self.db.process_query(self.parse_tnmt, query, params=(tournament_id,))
+
 
 class TnmtManager:
     def __init__(self, db : Database):
         self.db = db
         self.tnmts = []
 
-    def create(self, name, admin_id, date, total_rounds):
-        query = "INSERT INTO tournaments (name, admin_id, date, total_rounds) VALUES (%s, %s, %s, %s) RETURNING id"
-        id = self.db.execute_query(query, (name, admin_id, date, total_rounds), commit=True)
-        print(f"Tournament CREATED with id={id}")
-        return id
+    def create(self, tournament_data):
+        query = '''INSERT INTO tournaments (name, admin_id, date, prize, system, time_control,
+                                            fischer_time_control, place, total_rounds)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING id'''
+        try:
+            id = self.db.execute_query(query, (tournament_data['name'], tournament_data['admin_id'],
+                                           tournament_data['start_time'], tournament_data['prize'],
+                                           tournament_data['system'],
+                                           tournament_data['base_time'], tournament_data['fischer'],
+                                           tournament_data['place'], tournament_data['total_rounds']), commit=True)
+            print(f"Tournament CREATED with id={id}")
+            return id
+        except Exception as e:
+            print(e)
     
     def delete(self, tournament_id):
         queries = [
@@ -199,15 +246,21 @@ class TnmtManager:
             self.db.execute_query(query, (tournament_id,), commit=True)
 
     def parse(self, t):
-        players = self.get_players(t[0])
+        pm = PlayerManager(self.db)
+        players = pm.get_players(t[0])
         tnmt = Tournament(id=t[0],
                         admin_id=t[1],
                         name=t[2],
                         date=t[3],
-                        status=t[4],
-                        players=players,
-                        current_round=t[5],
-                        total_rounds=t[6])
+                        place=t[4],
+                        prize=t[5],
+                        time_control=t[6],
+                        fischer_time_control=t[7],
+                        status=t[8],
+                        current_round=t[9],
+                        total_rounds=t[10],
+                        system=t[11],
+                        players=players)
         return tnmt
     
     def parse_print(self, t):
@@ -215,13 +268,20 @@ class TnmtManager:
                         admin_id=t[1],
                         name=t[2],
                         date=t[3],
-                        status=t[4],
-                        current_round=t[5],
-                        total_rounds=t[6])
+                        place=t[4],
+                        prize=t[5],
+                        time_control=t[6],
+                        fischer_time_control=t[7],
+                        status=t[8],
+                        current_round=t[9],
+                        total_rounds=t[10],
+                        system=t[11])
         return tnmt
 
     def get_all(self, for_print = False) -> list[Tournament]:
-        query = '''SELECT id, admin_id, name, date, status, current_round, total_rounds
+        query = '''SELECT id, admin_id, name, date,
+                          place, prize, time_control, fischer_time_control,
+                          status, current_round, total_rounds, system
                     FROM tournaments
                     ORDER BY date DESC
                 '''
@@ -229,7 +289,9 @@ class TnmtManager:
         return self.db.process_query(process_func, query)
 
     def get_by_id(self, tournament_id) -> Tournament:
-        query = '''SELECT id, admin_id, name, date, status, current_round, total_rounds
+        query = '''SELECT id, admin_id, name, date,
+                          place, prize, time_control, fischer_time_control,
+                          status, current_round, total_rounds, system
                     FROM tournaments WHERE id=%s
                 '''
         packed = self.db.process_query(self.parse, query, params=(tournament_id,), limit=1)
@@ -243,17 +305,6 @@ class TnmtManager:
         '''
         rows = self.db.execute_query(query, (tournament_id,), fetchall=True)
         return rows
-
-    def get_players(self, tournament_id) -> list[Player]:
-        query = '''
-            SELECT pl.id, pl.user_id, pl.name, pl.ingo,
-                   tp.tournament_id, tp.points, tp.color_balance,
-            ''' + get_opponents_json + '''
-            FROM tournament_players tp
-            JOIN players pl ON tp.player_id = pl.id
-            WHERE tp.tournament_id = %s'''
-        pm = PlayerManager(self.db)
-        return self.db.process_query(pm.parse_tnmt, query, params=(tournament_id,))
 
     def add_player(self, tournament_id, player_id):
         query = "INSERT INTO tournament_players VALUES (%s, %s, %s, %s) ON CONFLICT (tournament_id, player_id) DO NOTHING"

@@ -1,37 +1,41 @@
-<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Ошибка 404 - Страница не найдена</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            text-align: center;
-            padding: 50px;
-            background-color: #f8f9fa;
-            color: #333;
-        }
-        h1 {
-            font-size: 50px;
-            margin-bottom: 20px;
-        }
-        p {
-            font-size: 20px;
-            margin-bottom: 30px;
-        }
-        a {
-            color: #007bff;
-            text-decoration: none;
-        }
-        a:hover {
-            text-decoration: underline;
-        }
-    </style>
-</head>
+{% extends 'base.html' %}
+
+{% block content %}
 <body>
-    <h1>404</h1>
-    <p>Страница, которую вы ищете, не существует.</p>
-    <p><a href="{{ url_for('index') }}">Вернуться на главную</a></p>
-</body>
-</html>
+    <div class="container" style="display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 80vh; text-align: center;">
+        <section class="tournaments" style="max-width: 600px; width: 100%; padding: 3rem;">
+            <div style="margin-bottom: 2.5rem;">
+                <div class="section-title" style="justify-content: center;">
+                    <h2><i class="fa-solid fa-triangle-exclamation"></i> Ошибка 404</h2>
+                </div>
+            </div>
+            
+            <div style="margin-bottom: 2rem;">
+                <div style="font-size: 5rem; color: var(--gold); margin-bottom: 1rem;">
+                    <i class="fa-solid fa-compass"></i>
+                </div>
+                <h3 style="color: var(--light-paper); margin-bottom: 1rem; font-size: 1.8rem;">
+                    Страница не найдена
+                </h3>
+                <p style="color: #d6c8b5; line-height: 1.6;">
+                    Похоже, вы пытаетесь найти что-то, чего здесь нет. Возможно, страница была перемещена или удалена.
+                </p>
+            </div>
+            
+            <div style="display: flex; flex-direction: column; gap: 1rem; margin-top: 2rem;">
+                <a href="{{ url_for('index') }}" class="btn btn-primary" style="padding: 0.8rem 2rem; font-size: 1.1rem;">
+                    <i class="fa-solid fa-house"></i> На главную
+                </a>
+                <a href="#" class="btn btn-secondary" onclick="history.back(); return false;" style="padding: 0.8rem 2rem; font-size: 1.1rem;">
+                    <i class="fa-solid fa-arrow-left"></i> Вернуться назад
+                </a>
+            </div>
+            
+            <div style="margin-top: 3rem; border-top: 1px solid rgba(255, 255, 255, 0.1); padding-top: 1.5rem;">
+                <p style="color: #d6c8b5; font-size: 0.9rem;">
+                    Если вы считаете, что это ошибка, пожалуйста, <a href="#" style="color: var(--gold); text-decoration: none;">сообщите нам</a>.
+                </p>
+            </div>
+        </section>
+    </div>
+{% endblock %}

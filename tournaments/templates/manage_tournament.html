@@ -1,120 +1,551 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>Управление турниром - {{ tournament.name }}</title>
-</head>
-<body>
+{% extends "base.html" %}
 
-    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-        <div>
-            {% if 'username' in session %}
-                <span style="margin-right: 15px;">Привет, {{ session['username'] }}!</span>
-                <a href="{{ url_for('logout') }}" class="btn" style="background-color: #e74c3c;">Выйти</a>
+{% block styles %}
+    <link rel="stylesheet" href="styles.css">
+    <style>
+    .tournament-header {
+        padding: 1.8rem;
+    }
+    
+    .match-item {
+        display: grid;
+        grid-template-columns: 1fr auto 1fr;
+        align-items: center;
+        gap: 12px;
+        padding: 12px 15px;
+        background: rgba(60, 45, 35, 0.7);
+        border-bottom: 1px solid rgba(255, 183, 0, 0.1);
+    }
+    
+    .match-item:last-child {
+        border-bottom: none;
+    }
+    
+    .player-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        flex-wrap: wrap;
+    }
+    
+    .player-info:first-child {
+        justify-content: flex-start;
+        text-align: left;
+    }
+    
+    .player-info:last-child {
+        justify-content: flex-end;
+        text-align: right;
+    }
+    
+    .match-score {
+        background: var(--gold);
+        color: var(--dark);
+        padding: 3px 12px;
+        border-radius: 4px;
+        font-weight: 600;
+        min-width: 60px;
+        text-align: center;
+        flex-shrink: 0;
+    }
+    
+    .round-score.win { color: var(--gold); }
+    .round-score.draw { color: var(--light-gold); }
+    .round-score.loss { color: #ccc; }
+    .round-score.bye { color: #aaa; font-style: italic; }
+    
+    .tournament-table th, 
+    .tournament-table td {
+        text-align: center;
+        vertical-align: middle;
+    }
+    
+    .tournament-table td.player-cell {
+        text-align: left;
+    }
+    
+    .player-rating-badge {
+        background: linear-gradient(45deg, var(--gold), var(--light-gold));
+        color: var(--dark);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        display: inline-block;
+        margin-left: 8px;
+    }
+
+    .player-rating-badge-red {
+        background: linear-gradient(45deg, var(--red), var(--dark-red));
+        color: var(--paper);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+    
+    .player-rating-badge-black {
+        background: linear-gradient(45deg, var(--dark), var(--black));
+        color: var(--paper);
+        border-radius: 20px;
+        padding: 4px 12px;
+        font-size: 0.9rem;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .tournament-table {
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+    
+    .tournament-table thead th {
+        background: linear-gradient(to right, var(--red), var(--dark-red));
+        color: var(--paper);
+        padding: 12px 15px;
+        font-weight: 500;
+        border: none;
+    }
+    
+    .tournament-table tbody tr {
+        background: rgba(60, 45, 35, 0.7);
+        transition: background-color 0.2s;
+    }
+    
+    .tournament-table tbody tr:nth-child(even) {
+        background: rgba(70, 55, 45, 0.7);
+    }
+    
+    .tournament-table tbody tr:hover {
+        background: rgba(80, 65, 55, 0.8);
+    }
+    
+    .tournament-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid rgba(255, 183, 0, 0.1);
+        color: #e0d6c3;
+    }
+    
+    .player-list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 15px;
+        background: rgba(60, 45, 35, 0.7);
+        border-bottom: 1px solid rgba(255, 183, 0, 0.1);
+    }
+
+    .player-list-item.me{
+        background: rgba(141, 107, 84, 0.7);
+    }
+    
+    .player-list-item:last-child {
+        border-bottom: none;
+    }
+    
+    .accordion-button {
+        background: rgba(42, 30, 23, 0.8);
+        color: var(--paper);
+        font-weight: 600;
+    }
+    
+    .accordion-button:not(.collapsed) {
+        background: rgba(60, 45, 35, 0.9);
+        color: var(--gold);
+    }
+    
+    .admin-button {
+        width: 100%;
+        margin-bottom: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+    }
+    
+    .tournament-card {
+        width: fit-content;
+        margin-bottom: 1.5rem;
+    }
+    
+    .chinese-header {
+        margin-bottom: 2rem !important;
+    }
+
+    .custom-container {
+        display: flex;
+        gap: 2.5rem;
+        padding: 2rem 5% 4rem;
+        max-width: 1400px;
+        margin: 0 auto;
+    }
+    
+    .fixed-height-container {
+        height: 600px;
+    }
+    
+</style>
+{% endblock %}
+
+{% block content %}
+    
+    <div class="hero">
+        <h1>{{ tournament.name }}</h1>
+
+        {% if tournament.status == 'upcoming'%}
+            {% if is_registered %}
+                <button class="status finished">Вы зарегистрированы</button>
+            {% elif this_player %}
+                <div class="status finished">Зарегистрироваться</div>
+                <div class="hint-trigger">?
+                    <div class="hint-text">Для регистрации необходимо привязать игровой аккаунт</div>
+                </div>
             {% else %}
-                <a href="{{ url_for('login') }}" class="btn" style="background-color: #3498db;">Войти</a>
-                <a href="{{ url_for('register') }}" class="btn" style="background-color: #2ecc71;">Регистрация</a>
+                <form method="POST"><button type="submit" class="btn btn-primary">Зарегистрироваться</button></form>
             {% endif %}
-        </div>
+        {% elif tournament.status == 'ongoing' %}
+            <div class="status closed">Идет: тур {{tournament.current_round}}/{{tournament.total_rounds}}</div>
+        {% elif tournament.status == 'finished' %}
+            <div class="status closed">Завершен</div>
+        {% endif %}
     </div>
 
-    <h1>{{ tournament.name }}</h1>
-    
-    <h2>Участники:</h2>
-    {% if players %}
-        <table border="1" cellpadding="5" style="border-collapse: collapse; width: 100%;">
-            <thead>
-                <tr>
-                    <th>Игрок</th>
-                    <th>Рейтинг</th>
-                    {% for round_num in range(1, tournament.total_rounds+1) %}
-                        <th>Раунд {{ round_num }}</th>
-                    {% endfor %}
-                    <th>Очки</th>
-                    {% if is_finished %}
-                        <th>Место</th>
-                        <th>Коэф. Бухгольца</th>
-                    {% endif %}
-                </tr>
-            </thead>
-            <tbody>
-                {% for player in players %}
-                    <tr>
-                        <td>{{ player.name }}</td>
-                        <td>{{ player.rating }}</td>
-                        {% for round_num in range(1, tournament.total_rounds+1) %}
-                            {% set round_info = player_rounds[player.id][round_num] %}
-                            <td>
-                                {% if round_info.opponent %}
-                                    {{ round_info.opponent.name }}<br>
-                                    {% if round_info.result != 'pending' %}
-                                        {{ round_info.points }}
-                                    {% else %}
-                                        (в процессе)
-                                    {% endif %}
-                                {% else %}
-                                    -
-                                {% endif %}
-                            </td>
-                        {% endfor %}
-                        <td><strong>{{ player.points }}</strong></td>
-                        {% if is_finished %}
-                            <td>
-                                {% for standing in player_standings %}
-                                    {% if standing.id == player.id %}
-                                        {{ standing.place }}
-                                    {% endif %}
-                                {% endfor %}
-                            </td>
-                            <td>
-                                {% for buch in player_buchholz %}
-                                    {% if buch.id == player.id %}
-                                        {{ buch.coef }}
-                                    {% endif %}
-                                {% endfor %}
-                            </td>
-                        {% endif %}
-                    </tr>
-                {% endfor %}
-            </tbody>
-        </table>
-    {% else %}
-        <p>Участников нет</p>
-    {% endif %}
-    
-    {% if is_admin and not is_finished %}
-    <a href="{{ url_for('add_players', tournament_id=tournament_id) }}">Добавить игроков</a>
-    
-    <h2>Генерация пар:</h2>
-    <form method="POST" action="{{ url_for('generate_pairs', tournament_id=tournament_id) }}">
-        <button type="submit">Сгенерировать пары для нового раунда</button>
-    </form>
-    {% endif %}
-    
-    <h2>Матчи:</h2>
-        <ul>
-            {% for match in matches %}
-                <li>
-                    {{ match.player1.name if match.player1 else "N/A" }} vs {{ match.player2.name if match.player2 else "N/A" }} 
-                    {% if match.result != 'pending' %}
-                        - Победитель: {{ match.result }}
+    <div class="container">
+        <div class="custom-container">
+
+                {% if tournament.is_started %}
+            <section class="tournament-card" style="flex: 1;">
+                {% else %}
+            <section class="tournament-card" style="flex: 1;">
+                {% endif %}
+
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fas fa-info-circle"></i>
+                        Информация о турнире
+                    </div>
+                </div>
+                <div class="detail-item">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span style="font-weight: bold;">Место проведения:</span>
+                    <span class="detail-value">{{tournament.place}}</span>
+                </div>
+                
+                <div class="detail-item">
+                    <i class="fas fa-calendar-alt"></i>
+                    <span style="font-weight: bold;">Дата:</span>
+                    <span class="detail-value">{{ tournament.display_date() }}</span>
+                </div>
+                
+                <div class="detail-item">
+                    <i class="fas fa-trophy"></i>
+                    <span style="font-weight: bold;">Призовой фонд:</span>
+                    {% if tournament.prize == -1 %}
+                        <span>Гарантированный приз</span>
+                        <div class="hint-trigger">?
+                            <div class="hint-text">Порядок выбора приза определяется результатами турнира</div>
+                        </div>
                     {% else %}
-                        {% if is_admin %}
-                        <form method="POST" action="{{ url_for('submit_result', match_id=match.id) }}">
-                            <input type="hidden" name="player1_id" value="{{ match.player1.id }}">
-                            <input type="hidden" name="player2_id" value="{{ match.player2.id }}">
-                            <select name="result">
-                                <option value="1-0">Победа {{ match.player1.name }}</option>
-                                <option value="0-1">Победа {{ match.player2.name }}</option>
-                                <option value="1/2-1/2">Ничья</option>
-                            </select>
-                            <button type="submit">Сохранить</button>
-                        </form>
-                        {% else %}
-                        - Идет игра
-                        {% endif %}
+                        <span>{{tournament.prize}}₽</span>
                     {% endif %}
-                </li>
-            {% endfor %}
-        </ul>
-</body>
-</html>
+                </div>
+
+                <div class="detail-item">
+                    <i class="fas fa-chess"></i>
+                    <span style="font-weight: bold;">Система жеребьевки:</span>
+                    {% if tournament.system == 'swiss' %}
+                        <span class="detail-value">Швейцарская</span>
+                    {% elif tournament.system == 'roundrobin' %}
+                        <span class="detail-value">Круговая</span>
+                    {% elif tournament.system == 'mcmahon' %}
+                        <span class="detail-value">МакМагон</span>
+                    {% endif %}
+                </div>
+
+                <div class="detail-item">
+                    <i class="fas fa-clock"></i>
+                    <span style="font-weight: bold;">Контроль времени:</span>
+                    <span class="detail-value">{{ tournament.display_time_control() }}</span>
+                </div>
+                
+                <div class="detail-item">
+                    <i class="fas fa-users"></i>
+                    <span style="font-weight: bold;">Участников:</span>
+                    <span class="detail-value">{{ players_num }}</span>
+                </div>
+                
+            </section>
+            
+            <section class="tournament-card" style="flex: 1;">
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fas fa-users"></i>
+                        Участники
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="player-list">
+                        {% if players %}
+                            {% for player in players %}
+
+                                {% if player.id == this_player.id %}
+                                    <div class="player-list-item me">
+                                {% else %}
+                                    <div class="player-list-item">
+                                {% endif %}
+                                        <span>{{ player.name }}</span>
+                                        <span class="player-rating-badge">{{ player.rating }}</span>
+                                    </div>
+
+                            {% endfor %}
+                        {% else %}
+                            <div class="player-list-item">
+                                <span>Пока нет зарегистрированных игроков</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
+            {% if is_admin %}
+            <section class="tournament-card" style="flex: 5;">
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fas fa-cogs"></i>
+                        Панель управления
+                    </div>
+                </div>
+                <div class="card-body">
+                    <a href="" class="btn btn-primary admin-button">
+                        <i class="fas fa-random"></i>Сгенерировать пары
+                    </a>
+                    
+                    <div class="input-group mb-3">
+                        <select class="form-select">
+                            <option selected>Выберите игрока...</option>
+                            <option>Карпов А.В.</option>
+                            <option>Каспаров Г.К.</option>
+                            <option>Иванов С.П.</option>
+                            <option>Петрова М.А.</option>
+                            <option>Сидоров Д.В.</option>
+                        </select>
+                        <button class="btn btn-danger">
+                            <i class="fas fa-user-minus"></i>
+                        </button>
+                    </div>
+                    
+                    <button class="btn btn-primary admin-button">
+                        <i class="fas fa-plus-circle"></i>Добавить игрока
+                    </button>
+                    
+                    <button class="btn btn-primary admin-button">
+                        <i class="fas fa-edit"></i>Редактировать турнир
+                    </button>
+                    
+                    <button class="btn btn-primary admin-button">
+                        <i class="fas fa-trophy"></i>Завершить турнир
+                    </button>
+                </div>
+            </section>
+            {% elif not tournament.is_started %}
+            <section class="tournament-card">
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fa-solid fa-image-portrait"></i>
+                        Ваш игровой профиль
+                    </div>
+                </div>
+                {% if is_loggedin %}
+                    {% if this_player %}
+                        <div class="player">
+                            <div class="player-name">{{ this_player.name }}</div>
+                        </div>
+                        <div class="player">
+                            <div class="player-name">Рейтинг </div>
+                            {{ this_player.rating }}
+                        </div>
+                        <div class="player">
+                            <div class="player-name">Город </div>
+                            <p>{{ this_player.city }}</p>
+                        </div>
+                    {% else %}
+                        <div class="player-list-item">
+                            <span>У Вас нет привязанного игрока</span>
+                        </div>
+                        <div class="player">
+                            <a href="{{ url_for('create_player') }}" class="player-name">Привязать</a>
+                        </div>
+                    {% endif %}
+                {% else %}
+                    <div class="player-list-item">
+                        <span>Вы не вошли в аккаунт</span>
+                    </div>
+                    <div class="player">
+                        <a href="{{ url_for('login') }}" class="player-name">Войти</a>
+                    </div>
+                {% endif %}
+            {% endif %}
+        </div>
+        
+        {% if tournament.is_started %}
+            <section class="tournament-card">
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fas fa-table"></i>
+                        Турнирная таблица
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="tournament-table">
+                            <thead>
+                                <tr>
+                                    <th>Игрок</th>
+                                    <th>Рейтинг</th>
+                                    
+                                    {% for round_num in range(1, tournament.total_rounds+1) %}
+                                        <th>Тур {{ round_num }}</th>
+                                    {% endfor %}
+                                    
+                                    <th>Очки</th>
+                                    
+                                    {% if is_finished %}
+                                        <th>Место</th>
+                                        <th>Коэф. Бухгольца</th>
+                                    {% endif %}
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for player in players %}
+                                    {% set player_results = player_rounds[player.id] %}
+                                    <tr>
+                                        <td class="player-cell">{{ player.name }}</td>
+                                        <td>
+                                            <span class="player-rating-badge">{{ player.rating }}</span>
+                                        </td>
+                                        
+                                        {% for round_num in range(1, tournament.total_rounds+1) %}
+                                            {% set round_info = player_results[round_num] %}
+                                            <td>
+                                                {% if round_info.opponent %}
+                                                    {% if round_info.result != 'pending' %}
+                                                        {% if round_info.points == 1.0 %}
+                                                            <span class="round-score win">1</span>
+                                                        {% elif round_info.points == 0.5 %}
+                                                            <span class="round-score draw">½</span>
+                                                        {% elif round_info.points == 0.0 %}
+                                                            <span class="round-score loss">0</span>
+                                                        {% else %}
+                                                            {{ round_info.points }}
+                                                        {% endif %}
+                                                    {% else %}
+                                                        <span class="round-score">?</span>
+                                                    {% endif %}
+                                                {% else %}
+                                                    <span class="round-score bye">+</span>
+                                                {% endif %}
+                                            </td>
+                                        {% endfor %}
+                                        
+                                        <td>
+                                            <strong>{{ player.points }}</strong>
+                                        </td>
+                                        
+                                        {% if is_finished %}
+                                            {% for standing in player_standings %}
+                                                {% if standing['id'] == player.id %}
+                                                    <td>{{ standing['place'] }}</td>
+                                                    <td>{{ standing['coef'] }}</td>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% endif %}
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
+            
+            <section class="tournament-card">
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fas fa-chess-board"></i>
+                        Матчи по турам
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="accordion" id="roundsAccordion">
+                        <div class="accordion-item">
+                            <h3 class="accordion-header">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#round1">
+                                    <i class="fas fa-flag me-2"></i> Тур 1
+                                </button>
+                            </h3>
+                            <div id="round1" class="accordion-collapse collapse show">
+                                <div class="accordion-body p-0">
+                                    <div class="match-item">
+                                        <div class="player-info">
+                                            Карпов А.В. <span class="player-rating-badge-red">2750</span>
+                                        </div>
+                                        <span class="match-score">1 : 0</span>
+                                        <div class="player-info">
+                                            Каспаров Г.К. <span class="player-rating-badge-black">2720</span>
+                                        </div>
+                                    </div>
+                                    <div class="match-item">
+                                        <div class="player-info">
+                                            Карпов А.В. <span class="player-rating-badge-red">2750</span>
+                                        </div>
+                                        <span class="match-score">0 : 1</span>
+                                        <div class="player-info">
+                                            Каспаров Г.К. <span class="player-rating-badge-black">2720</span>
+                                        </div>
+                                    </div>
+                                    <div class="match-item">
+                                        <div class="player-info">
+                                            Карпов А.В. <span class="player-rating-badge-red">2750</span>
+                                        </div>
+                                        <span class="match-score">½ : ½</span>
+                                        <div class="player-info">
+                                            Каспаров Г.К. <span class="player-rating-badge-black">2720</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="accordion-item">
+                            <h3 class="accordion-header">
+                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#round2">
+                                    <i class="fas fa-flag me-2"></i> Тур 2
+                                </button>
+                            </h3>
+                            <div id="round2" class="accordion-collapse collapse">
+                                <div class="accordion-body p-0">
+                                    <div class="match-item">
+                                        <span>Карпов А.В. <span class="player-rating-badge">2750</span></span>
+                                        <span class="match-score">1 : 0</span>
+                                        <span>Иванов С.П. <span class="player-rating-badge">2680</span></span>
+                                    </div>
+                                    <div class="match-item">
+                                        <span>Каспаров Г.К. <span class="player-rating-badge">2720</span></span>
+                                        <span class="match-score">1 : 0</span>
+                                        <span>Сидоров Д.В. <span class="player-rating-badge">2630</span></span>
+                                    </div>
+                                    <div class="match-item">
+                                        <span>Петрова М.А. <span class="player-rating-badge">2650</span></span>
+                                        <span class="match-score">0.5 : 0.5</span>
+                                        <span>Козлов В.И. <span class="player-rating-badge">2600</span></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+    </div>
+
+{% endblock %}

@@ -1,4 +1,4 @@
-from config import TnmtStatus, Role
+from config import TnmtStatus, Role, months
 import bcrypt
 
 class User:
@@ -10,24 +10,28 @@ class User:
         self.current_player_id = current_player_id
         self.pw = pw
     
-    def auth(self, password_bytes):
-        return bcrypt.checkpw(password_bytes, self.pw.encode('utf-8'))
+    def auth(self, password:str):
+        print(f'AUTH: expecting {self.pw}. got {password}')
+        if self.pw == password:
+            return True
+        return bcrypt.checkpw(password.encode('utf8'), self.pw.encode('utf8'))
 
 class Player:
-    def __init__(self, id, user_id, name, ingo):
+    def __init__(self, id, user_id, name, city:int, ingo):
         self.id = id
         self.user_id = user_id
         self.name = name
         self.ingo = ingo
+        self.city = city
         self.rating = 2750 - 7*ingo
 
     def __repr__(self):
         return f"{self.name} ({self.rating})"
 
 class TnmtPlayer(Player):
-    def __init__(self, id, user_id, name, ingo,
+    def __init__(self, id, user_id, name, city, ingo,
                  tnmt_id, points, color_balance, opponents=[]):
-        super().__init__(id, user_id, name, ingo)
+        super().__init__(id, user_id, name, city, ingo)
         self.tnmt_id = tnmt_id
         self.points = points
         self.color_balance = color_balance
@@ -89,18 +93,51 @@ class TnmtPlayer(Player):
 
 
 class Tournament:
-    def __init__(self, id, admin_id, name, date, total_rounds, status=TnmtStatus.upcoming, players=[], current_round=0):
+    def __init__(self, id, admin_id, name, date, place, time_control:int, total_rounds, system, fischer_time_control=0, prize=0, status=TnmtStatus.upcoming, players=[], current_round=0):
         self.id = id
         self.admin_id = admin_id
         self.name = name
         self.date = date
         self.status = status
         self.players = players
+        self.place = place
+        self.system = system
+        self.time_control = self.parse_time_control(time_control, fischer_time_control)
+        self.prize = prize
         self.ratings = [p.rating for p in players]
         self.matches = []
         self.total_rounds = total_rounds
         self.current_round = current_round
         self.is_finished = self.current_round == self.total_rounds
+        self.is_started = self.current_round > 0
+
+    def display_date(self):
+        return f"{self.date.strftime("%d")} {months[self.date.month]} {self.date.strftime("%Y")}"
+
+    def display_time(self):
+        h = self.date.hour
+        m = self.date.minute
+        return f'{'0' if h<10 else ''}{h}:{'0' if m<10 else ''}{m}'
+
+    def display_time_control(self):
+        h = self.time_control['hours']
+        m = self.time_control['minutes']
+        s = self.time_control['seconds']
+        f = self.time_control['fischer']
+        time = f'{h}:' if h>0 else ''
+        time += f'{'0' if m<10 else ''}{m}:{'0' if s<10 else ''}{s}'
+        time += f'+{f}s'
+        return time
+
+    def parse_time_control(self, time_in_seconds, fischer):
+        time_control = ''
+        h = time_in_seconds // 3600
+        if h>0:
+            time_control += f'{h}:'
+        m = (time_in_seconds - h*3600) // 60
+        s = time_in_seconds - h*3600 - m*60
+        return {"hours":h, "minutes":m, "seconds":s, "fischer":fischer}
+        
 
     def create_pairs(self):
         if self.current_round == 0:
