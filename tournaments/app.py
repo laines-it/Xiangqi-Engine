@@ -346,7 +346,7 @@ def add_players(tournament_id):
     if request.method == 'POST':
         all_players = pm.get_all()
         for player in all_players:
-            if request.form.get(f'player_{player.id}'):
+            if request.form.get(f"player_{player.id}"):
                 tm.add_player(tournament_id, player.id)
         
         return redirect(url_for('manage_tournament', tournament_id=tournament_id))

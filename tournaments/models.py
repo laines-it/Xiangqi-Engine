@@ -116,23 +116,23 @@ class Tournament:
     def display_time(self):
         h = self.date.hour
         m = self.date.minute
-        return f'{'0' if h<10 else ''}{h}:{'0' if m<10 else ''}{m}'
+        return f"{'0' if h<10 else ''}{h}:{'0' if m<10 else ''}{m}"
 
     def display_time_control(self):
         h = self.time_control['hours']
         m = self.time_control['minutes']
         s = self.time_control['seconds']
         f = self.time_control['fischer']
-        time = f'{h}:' if h>0 else ''
-        time += f'{'0' if m<10 else ''}{m}:{'0' if s<10 else ''}{s}'
-        time += f'+{f}s'
+        time = f"{h}:' if h>0 else '"
+        time += f"{'0' if m<10 else ''}{m}:{'0' if s<10 else ''}{s}"
+        time += f"+{f}s"
         return time
 
     def parse_time_control(self, time_in_seconds, fischer):
         time_control = ''
         h = time_in_seconds // 3600
         if h>0:
-            time_control += f'{h}:'
+            time_control += f"{h}:"
         m = (time_in_seconds - h*3600) // 60
         s = time_in_seconds - h*3600 - m*60
         return {"hours":h, "minutes":m, "seconds":s, "fischer":fischer}
