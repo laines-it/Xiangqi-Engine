@@ -9,7 +9,7 @@ from datetime import datetime
 
 from database import Database
 from managers import TnmtManager, UserManager, PlayerManager, ingo_from
-from config import Role, Status, EMAIL_REGEX, HEADERS
+from config import Role, Status, EMAIL_REGEX
 
 load_dotenv()
 

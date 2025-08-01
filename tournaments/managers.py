@@ -8,7 +8,7 @@ import bcrypt
 def rating_from(ingo):
     return 2750 - 7*ingo
 def ingo_from(rating):
-    return (2750 - rating)/7
+    return (2750 - rating)//7
 
 class UserManager:
 
@@ -29,7 +29,6 @@ class UserManager:
         if packed:
             user = packed[0]
             if user.auth(password):
-                print("FINE auth")
                 return user
             else:
                 raise ValueError
