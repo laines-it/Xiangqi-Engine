@@ -123,7 +123,7 @@ class Tournament:
         m = self.time_control['minutes']
         s = self.time_control['seconds']
         f = self.time_control['fischer']
-        time = f"{h}:' if h>0 else '"
+        time = f"{h}" if h>0 else ''
         time += f"{'0' if m<10 else ''}{m}:{'0' if s<10 else ''}{s}"
         time += f"+{f}s"
         return time

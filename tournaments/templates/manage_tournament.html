@@ -198,12 +198,12 @@
             {% if is_registered %}
                 <button class="status finished">Вы зарегистрированы</button>
             {% elif this_player %}
+                <form method="POST"><button type="submit" class="btn btn-primary">Зарегистрироваться</button></form>
+            {% else %}
                 <div class="status finished">Зарегистрироваться</div>
                 <div class="hint-trigger">?
                     <div class="hint-text">Для регистрации необходимо привязать игровой аккаунт</div>
                 </div>
-            {% else %}
-                <form method="POST"><button type="submit" class="btn btn-primary">Зарегистрироваться</button></form>
             {% endif %}
         {% elif tournament.status == 'ongoing' %}
             <div class="status closed">Идет: тур {{tournament.current_round}}/{{tournament.total_rounds}}</div>
