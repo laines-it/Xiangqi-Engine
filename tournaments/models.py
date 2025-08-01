@@ -11,7 +11,6 @@ class User:
         self.pw = pw
     
     def auth(self, password:str):
-        print(f'AUTH: expecting {self.pw}. got {password}')
         if self.pw == password:
             return True
         return bcrypt.checkpw(password.encode('utf8'), self.pw.encode('utf8'))
@@ -112,7 +111,7 @@ class Tournament:
         self.is_started = self.current_round > 0
 
     def display_date(self):
-        return f"{self.date.strftime("%d")} {months[self.date.month]} {self.date.strftime("%Y")}"
+        return f"{self.date.day} {months[self.date.month]} {self.date.year}"
 
     def display_time(self):
         h = self.date.hour
