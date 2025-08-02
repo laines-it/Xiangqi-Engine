@@ -1,6 +1,7 @@
 import psycopg2
 from psycopg2.extras import DictCursor
 import os
+import csv
 import bcrypt
 
 from config import Role
@@ -97,6 +98,18 @@ class Database:
                         (os.environ.get('ADMIN_NAME'), admin_hash_pass, Role.admin.value))
 
                 conn.commit()
+
+    def add_csv(self):
+        with self.connect() as conn:
+            with conn.cursor() as cursor:
+                with open('файл.csv', 'r') as f:
+                    reader = csv.reader(f)
+                    next(reader)
+                    for row in reader:
+                        cursor.execute("""
+                            INSERT INTO players (name, city, connect_code, tournaments_played, ingo)
+                            VALUES (%s, %s, %s, %s, %s)
+                        """, row)
 
     def connect(self):
         return psycopg2.connect(self.conn_params, sslmode='require', cursor_factory=DictCursor)

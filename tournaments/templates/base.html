@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>{% block title %}Xiangqi Masters | Турниры по сянци{% endblock %}</title>
+  <title>{% block title %}Сянци в России | Турниры по сянци{% endblock %}</title>
   <link rel="stylesheet" href="/static/styles.css">
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
   {% block styles %}{% endblock %}
@@ -11,17 +11,17 @@
 <body>
   <header>
     <div class="logo">
-      <div class="logo-icon">象</div>
-      <div class="logo-text">Xiangqi Masters</div>
+      <a href="{{ url_for('index')}} " class="logo-icon">象</a>
+      <div class="logo-text">Сянци в России</div>
     </div>
     
     <nav class="nav-links">
       <a href="{{ url_for('index') }}" class="active"><i class="fas fa-home"></i> Главная</a>
-      <a href="#"><i class="fas fa-trophy"></i> Турниры</a>
+      <!-- <a href="#"><i class="fas fa-trophy"></i> Турниры</a>
       <a href="#"><i class="fas fa-chess-rook"></i> Игроки</a>
-      <a href="#"><i class="fas fa-scroll"></i> Правила</a>
-      <a href="{{ url_for('exec_query') }}"><i class="fas fa-history"></i> Архив</a>
-      <a href="#"><i class="fas fa-info-circle"></i> О нас</a>
+      <a href="#"><i class="fas fa-scroll"></i> Правила</a> -->
+      <!-- <a href="{{ url_for('exec_query') }}"><i class="fas fa-history"></i> Архив</a> -->
+      <!-- <a href="#"><i class="fas fa-info-circle"></i> О нас</a> -->
     </nav>
     
     <div class="nav-buttons">
@@ -40,7 +40,7 @@
 
   <footer>
     <div class="footer-content">
-      <div class="footer-column">
+      <!-- <div class="footer-column">
         <h3><i class="fas fa-chess-rook"></i> Xiangqi Masters</h3>
         <p>Платформа для организации и проведения турниров по сянци - древним китайским шахматам. Присоединяйтесь к нашему сообществу профессионалов и любителей.</p>
         <div class="social-links">
@@ -55,38 +55,38 @@
         <h3><i class="fas fa-trophy"></i> Турниры</h3>
         <ul class="footer-links">
           <li><span>Раздел в разработке</span></li>
-          <!-- <li><a href="#"><i class="fas fa-chevron-right"></i> Предстоящие турниры</a></li>
+          <li><a href="#"><i class="fas fa-chevron-right"></i> Предстоящие турниры</a></li>
           <li><a href="#"><i class="fas fa-chevron-right"></i> Текущие турниры</a></li>
           <li><a href="#"><i class="fas fa-chevron-right"></i> Архив турниров</a></li>
           <li><a href="#"><i class="fas fa-chevron-right"></i> Международные</a></li>
-          <li><a href="#"><i class="fas fa-chevron-right"></i> Национальные</a></li> -->
-        </ul>
+          <li><a href="#"><i class="fas fa-chevron-right"></i> Национальные</a></li>
+          </ul>
       </div>
       
       <div class="footer-column">
         <h3><i class="fas fa-scroll"></i> Ресурсы</h3>
         <ul class="footer-links">
           <li><span>Раздел в разработке</span></li>
-          <!-- <li><a href="#"><i class="fas fa-chevron-right"></i> Правила сянци</a></li>
+          <li><a href="#"><i class="fas fa-chevron-right"></i> Правила сянци</a></li>
           <li><a href="#"><i class="fas fa-chevron-right"></i> Стратегии игры</a></li>
           <li><a href="#"><i class="fas fa-chevron-right"></i> Учебные видео</a></li>
           <li><a href="#"><i class="fas fa-chevron-right"></i> Блог</a></li>
-          <li><a href="#"><i class="fas fa-chevron-right"></i> FAQ</a></li> -->
+          <li><a href="#"><i class="fas fa-chevron-right"></i> FAQ</a></li>
         </ul>
       </div>
-      
+       -->
       <div class="footer-column">
         <h3><i class="fas fa-envelope"></i> Контакты</h3>
         <ul class="footer-links">
-          <li><a href="#"><i class="fas fa-phone"></i> +7 916 919 1361</a></li>
-          <li><a href="#"><i class="fas fa-map-marker-alt"></i> Россия, Москва, ул. Большая Пионерская, 24</a></li>
-          <li><a href="#"><i class="fas fa-clock"></i> Клубе "Орион" по воскресеньям 14:00 - 17:00</a></li>
+          <li><i class="fas fa-phone"></i> +7 916 919 1361</li>
+          <li><i class="fas fa-map-marker-alt"></i> Россия, Москва, ул. Большая Пионерская, 24</li>
+          <li><i class="fas fa-clock"></i> Клубе "Орион" по воскресеньям 14:00 - 17:00</li>
         </ul>
       </div>
     </div>
     
     <div class="copyright">
-      &copy; Межрегиональная общественная организация “Федерация китайских шахмат сянци”. 2022.
+        Межрегиональная общественная организация “Федерация китайских шахмат сянци”. 2022.
     </div>
   </footer>
 
