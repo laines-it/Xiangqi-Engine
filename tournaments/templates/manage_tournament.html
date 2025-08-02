@@ -185,6 +185,45 @@
     .fixed-height-container {
         height: 600px;
     }
+
+    /* Стили для анимации */
+    #registerBtn {
+        position: relative;
+        overflow: hidden;
+        transition: all 0.3s ease;
+    }
+    
+    .loading-indicator {
+        display: none;
+        align-items: center;
+        gap: 8px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        white-space: nowrap;
+    }
+    
+    .spinner {
+        width: 16px;
+        height: 16px;
+        border: 2px solid rgba(255, 255, 255, 0.3);
+        border-radius: 50%;
+        border-top-color: var(--paper);
+        animation: spin 0.8s linear infinite;
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    #registerBtn.loading .btn-text {
+        visibility: hidden;
+    }
+    
+    #registerBtn.loading .loading-indicator {
+        display: flex;
+    }
     
 </style>
 {% endblock %}
@@ -198,9 +237,17 @@
             {% if is_registered %}
                 <button class="status finished">Вы зарегистрированы</button>
             {% elif this_player %}
-                <form method="POST"><button type="submit" class="btn btn-primary">Зарегистрироваться</button></form>
+                <form method="POST" id="regForm">
+                    <button type="submit" class="btn btn-primary" id="registerBtn">
+                        <span class="btn-text">Зарегистрироваться</span>
+                        <span class="loading-indicator">
+                            <span class="spinner"></span>
+                            Идет регистрация...
+                        </span>
+                    </button>
+                </form>
             {% else %}
-                <div class="status finished">Зарегистрироваться</div>
+                <button class="status finished">Зарегистрироваться</button>
                 <div class="hint-trigger">?
                     <div class="hint-text">Для регистрации необходимо привязать игровой аккаунт</div>
                 </div>
@@ -278,37 +325,7 @@
                 
             </section>
             
-            <section class="tournament-card" style="flex: 1;">
-                <div class="tournament-header">
-                    <div class="tournament-title">
-                        <i class="fas fa-users"></i>
-                        Участники
-                    </div>
-                </div>
-                <div class="card-body p-0">
-                    <div class="player-list">
-                        {% if players %}
-                            {% for player in players %}
-
-                                {% if player.id == this_player.id %}
-                                    <div class="player-list-item me">
-                                {% else %}
-                                    <div class="player-list-item">
-                                {% endif %}
-                                        <span>{{ player.name }}</span>
-                                        <span class="player-rating-badge">{{ player.rating }}</span>
-                                    </div>
-
-                            {% endfor %}
-                        {% else %}
-                            <div class="player-list-item">
-                                <span>Пока нет зарегистрированных игроков</span>
-                            </div>
-                        {% endif %}
-                    </div>
-                </div>
-            </section>
-
+            
             {% if is_admin %}
             <section class="tournament-card" style="flex: 5;">
                 <div class="tournament-header">
@@ -318,23 +335,9 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <a href="" class="btn btn-primary admin-button">
+                    <a href="{{ url_for('generate_pairs', tournament_id=tournament_id) }}" class="btn btn-primary admin-button">
                         <i class="fas fa-random"></i>Сгенерировать пары
                     </a>
-                    
-                    <div class="input-group mb-3">
-                        <select class="form-select">
-                            <option selected>Выберите игрока...</option>
-                            <option>Карпов А.В.</option>
-                            <option>Каспаров Г.К.</option>
-                            <option>Иванов С.П.</option>
-                            <option>Петрова М.А.</option>
-                            <option>Сидоров Д.В.</option>
-                        </select>
-                        <button class="btn btn-danger">
-                            <i class="fas fa-user-minus"></i>
-                        </button>
-                    </div>
                     
                     <button class="btn btn-primary admin-button">
                         <i class="fas fa-plus-circle"></i>Добавить игрока
@@ -349,7 +352,9 @@
                     </button>
                 </div>
             </section>
+
             {% elif not tournament.is_started %}
+            
             <section class="tournament-card">
                 <div class="tournament-header">
                     <div class="tournament-title">
@@ -386,9 +391,44 @@
                         <a href="{{ url_for('login') }}" class="player-name">Войти</a>
                     </div>
                 {% endif %}
+            </section>
+            {% else %}
+            <section class="tournament-card" style="flex: 1;">
+                <div class="tournament-header">
+                    <div class="tournament-title">
+                        <i class="fas fa-users"></i>
+                        Участники
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    <div class="player-list">
+                        {% if players %}
+                            {% for player in players %}
+
+                                {% if player.id == this_player.id %}
+                                    <div class="player-list-item me">
+                                {% else %}
+                                    <div class="player-list-item">
+                                {% endif %}
+                                        <span>{{ player.name }}</span>
+                                        <span class="player-rating-badge">{{ player.rating }}</span>
+                                    </div>
+
+                            {% endfor %}
+                        {% else %}
+                            <div class="player-list-item">
+                                <span>Пока нет зарегистрированных игроков</span>
+                            </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </section>
+
             {% endif %}
         </div>
         
+        <br>
+
         {% if tournament.is_started %}
             <section class="tournament-card">
                 <div class="tournament-header">
@@ -423,7 +463,7 @@
                                     <tr>
                                         <td class="player-cell">{{ player.name }}</td>
                                         <td>
-                                            <span class="player-rating-badge">{{ player.rating }}</span>
+                                            <strong>{{ player.rating }}</strong>
                                         </td>
                                         
                                         {% for round_num in range(1, tournament.total_rounds+1) %}
@@ -478,74 +518,72 @@
                 </div>
                 <div class="card-body">
                     <div class="accordion" id="roundsAccordion">
-                        <div class="accordion-item">
-                            <h3 class="accordion-header">
-                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#round1">
-                                    <i class="fas fa-flag me-2"></i> Тур 1
-                                </button>
-                            </h3>
-                            <div id="round1" class="accordion-collapse collapse show">
+
+                        {% for round in range(1, tournament.current_round+1) %}
+
+                            <details {% if loop.last %} open {% endif %}>
+                        
+                            <summary><h3 style="display: inline-block;">Тур {{ round }}</h3></summary>
+                          
+                            <div id="round{{round}}" class="accordion-collapse collapse show">
                                 <div class="accordion-body p-0">
-                                    <div class="match-item">
-                                        <div class="player-info">
-                                            Карпов А.В. <span class="player-rating-badge-red">2750</span>
+                                    {% for match in matches if match.round == round %}
+                                        <div class="match-item">
+                                            <div class="player-info">
+                                                {{ player_id_to_name[match.player1] }}
+                                            </div>
+                                            {% if match.result == 'pending' %}
+                                                {% if is_admin %}
+                                                <form method="GET" action="{{ url_for('submit_result', match_id=match.id) }}">
+                                                    <div class="form-group">
+                                                        <select class="form-control" id="result{{match.id}}" name="result{{match.id}}" required>
+                                                            <option value="pending" disabled selected>-- Результат --</option>
+                                                            <option value="1-0">1 : 0</option>
+                                                            <option value="0-1">0 : 1</option>
+                                                            <option value="1/2-1/2">½ : ½</option>
+                                                        </select>
+                                                        <input type='hidden' name="p1" value="{{match.player1}}">
+                                                        <input type='hidden' name="p2" value="{{match.player2}}">
+                                                    </div>
+                                                    <button type="submit" class="btn btn-primary">Отправить результат</button>
+                                                </form>
+                                                {% else %}
+                                                <span class="match-score">Ожидание...</span>
+                                                {% endif %}
+                                            {% else %}
+                                                <span class="match-score">{{ match.result }}</span>
+                                            {% endif %}
+                                            <div class="player-info">
+                                                {{ player_id_to_name[match.player2] }}
+                                            </div>
                                         </div>
-                                        <span class="match-score">1 : 0</span>
-                                        <div class="player-info">
-                                            Каспаров Г.К. <span class="player-rating-badge-black">2720</span>
-                                        </div>
-                                    </div>
-                                    <div class="match-item">
-                                        <div class="player-info">
-                                            Карпов А.В. <span class="player-rating-badge-red">2750</span>
-                                        </div>
-                                        <span class="match-score">0 : 1</span>
-                                        <div class="player-info">
-                                            Каспаров Г.К. <span class="player-rating-badge-black">2720</span>
-                                        </div>
-                                    </div>
-                                    <div class="match-item">
-                                        <div class="player-info">
-                                            Карпов А.В. <span class="player-rating-badge-red">2750</span>
-                                        </div>
-                                        <span class="match-score">½ : ½</span>
-                                        <div class="player-info">
-                                            Каспаров Г.К. <span class="player-rating-badge-black">2720</span>
-                                        </div>
-                                    </div>
+                                    {% endfor %}
+                                    
                                 </div>
                             </div>
-                        </div>
-                        <div class="accordion-item">
-                            <h3 class="accordion-header">
-                                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#round2">
-                                    <i class="fas fa-flag me-2"></i> Тур 2
-                                </button>
-                            </h3>
-                            <div id="round2" class="accordion-collapse collapse">
-                                <div class="accordion-body p-0">
-                                    <div class="match-item">
-                                        <span>Карпов А.В. <span class="player-rating-badge">2750</span></span>
-                                        <span class="match-score">1 : 0</span>
-                                        <span>Иванов С.П. <span class="player-rating-badge">2680</span></span>
-                                    </div>
-                                    <div class="match-item">
-                                        <span>Каспаров Г.К. <span class="player-rating-badge">2720</span></span>
-                                        <span class="match-score">1 : 0</span>
-                                        <span>Сидоров Д.В. <span class="player-rating-badge">2630</span></span>
-                                    </div>
-                                    <div class="match-item">
-                                        <span>Петрова М.А. <span class="player-rating-badge">2650</span></span>
-                                        <span class="match-score">0.5 : 0.5</span>
-                                        <span>Козлов В.И. <span class="player-rating-badge">2600</span></span>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+                            </details>
+                        {% endfor %}
                     </div>
                 </div>
             </section>
         {% endif %}
     </div>
 
+{% endblock %}
+
+{% block script %}
+    
+<script>
+    document.getElementById('regForm').addEventListener('submit', function(e) {
+        var btn = document.getElementById('registerBtn');
+        btn.classList.add('loading');
+        btn.disabled = true;
+        return true;
+    });
+
+  function toggleCollapse() {
+    const container = document.getElementById('collapse-container');
+    container.classList.toggle('collapsed');
+  }
+</script>
 {% endblock %}

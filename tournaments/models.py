@@ -233,7 +233,7 @@ class Tournament:
         return f"Tournament {self.id}; {self.name}; {self.status}"
 
 class Match:
-    def __init__(self, id, tournament_id, round, player1, player2, result, color1, color2):
+    def __init__(self, id, tournament_id, round, player1, player2, result):
         self.id = id
         self.tournament_id = tournament_id
         self.round = round
@@ -244,18 +244,6 @@ class Match:
     def has_finished(self):
         return self.result != 'pending'
 
-    def get_winner(self):
-        if self.result == '1-0':
-            return self.player1
-        elif self.result == '0-1':
-            return self.player2
-        else:
-            return None
-    
-    def get_winner_id(self):
-        winner = self.get_winner()
-        return winner.id if winner else None
-    
     def get_expected_scores(self):
         pass
 

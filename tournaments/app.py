@@ -214,7 +214,10 @@ def manage_tournament(tournament_id):
         
         players = tournament.players
 
+        player_id_to_name = {player.id: player.name for player in players}
+
         matches = tm.get_matches(tournament_id)
+
 
         is_admin = 'role' in session and session['role'] == Role.admin.value
         
@@ -223,6 +226,7 @@ def manage_tournament(tournament_id):
 
         rounds = {}
         if tournament.current_round > 0:
+
             for match in matches:
                 if match.round not in rounds:
                     rounds[match.round] = []
@@ -235,7 +239,7 @@ def manage_tournament(tournament_id):
                 
                 for round_num, round_matches in rounds.items():
                     for match in round_matches:
-                        if match.player1 and match.player1.id == player.id:
+                        if match.player1 and match.player1 == player.id:
                             opponent = match.player2
                             if match.result == '1-0':
                                 points = 1
@@ -246,11 +250,11 @@ def manage_tournament(tournament_id):
                             else:
                                 points = 0
                             player_results[round_num] = {
-                                'opponent': opponent.id,
+                                'opponent': opponent,
                                 'result': match.result,
                                 'points': points
                             }
-                        elif match.player2 and match.player2.id == player.id:
+                        elif match.player2 and match.player2 == player.id:
                             opponent = match.player1
                             if match.result == '1-0':
                                 points = 0
@@ -261,7 +265,7 @@ def manage_tournament(tournament_id):
                             else:
                                 points = 0
                             player_results[round_num] = {
-                                'opponent': opponent.id,
+                                'opponent': opponent,
                                 'result': match.result,
                                 'points': points
                             }
@@ -300,6 +304,7 @@ def manage_tournament(tournament_id):
                             tournament_id=tournament.id,
                             tournament=tournament,
                             players=players,
+                            player_id_to_name=player_id_to_name,
                             players_num=len(players),
                             player_rounds=player_rounds,
                             player_standings=player_standings,
@@ -312,7 +317,7 @@ def manage_tournament(tournament_id):
     else:
         player_id = session['current_player_id']
         tm.add_player(tournament_id, player_id)
-        return redirect(url_for('manage_tournament'), tournament_id)
+        return redirect(url_for('manage_tournament', tournament_id=tournament_id))
 
 
 @app.route('/tournaments')
@@ -337,7 +342,7 @@ def tournaments_list():
 def register_player(tournament_id):
     player_id = session['current_player_id']
     tm.add_player(tournament_id, player_id)
-    return redirect(url_for('manage_tournament'), tournament_id=tournament_id)
+    return redirect(url_for('manage_tournament', tournament_id=tournament_id))
 
 @app.route('/players/add/<int:tournament_id>', methods=['GET', 'POST'])
 @login_required
@@ -360,7 +365,7 @@ def add_players(tournament_id):
                            all_players=all_players,
                            tournament_player_ids=tournament_player_ids)
 
-@app.route('/tournaments/<int:tournament_id>/pairs', methods=['POST'])
+@app.route('/tournaments/<int:tournament_id>/pairs', methods=['GET'])
 @login_required
 @admin_required
 def generate_pairs(tournament_id):
@@ -369,11 +374,11 @@ def generate_pairs(tournament_id):
         return "Количество игроков должно быть четным!", 400
     return redirect(url_for('manage_tournament', tournament_id=tournament_id))
 
-@app.route('/matches/<int:match_id>/result', methods=['POST'])
+@app.route('/matches/<int:match_id>/result', methods=['GET'])
 @login_required
 @admin_required
 def submit_result(match_id):
-    result = request.form.get('result')
+    result = request.args.get('result'+str(match_id), 'pending')
     if not result:
         return "Не выбран результат!", 400
     
@@ -381,8 +386,8 @@ def submit_result(match_id):
     if result not in valid_results:
         return "Некорректный результат!", 400
     
-    player1_id = request.form.get('player1_id')
-    player2_id = request.form.get('player2_id')
+    player1_id = int(request.args.get("p1", ''))
+    player2_id = int(request.args.get("p2", ''))
 
     status = tm.update_match_result(match_id, result, player1_id, player2_id)
     if status == Status.failed:

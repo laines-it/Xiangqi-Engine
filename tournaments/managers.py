@@ -323,7 +323,7 @@ class TnmtManager:
     def get_matches(self, tournament_id) -> list[Match]:
         query = '''
             SELECT m.id, m.tournament_id, m.round, 
-                   m.player1_id, m.player2_id, m.result, m.player1_color
+                   m.player1_id, m.player2_id, m.result
             FROM matches m
             WHERE m.tournament_id=%s
             ORDER BY m.round
@@ -331,19 +331,13 @@ class TnmtManager:
         return self.db.process_query(self.parse_match, query, params=(tournament_id,))
 
     def parse_match(self, row):
-        pm = PlayerManager(self.db)
-        player1 = pm.get_player_tnmt(row[3])
-        player2 = pm.get_player_tnmt(row[4])
-        opposite_color = 'black' if row[6]=='red' else 'red'
         match = Match(id=row[0],
                     tournament_id=row[1],
                     round=row[2],
-                    player1=player1,
-                    player2=player2,
-                    result=row[5],
-                    color1=row[6],
-                    color2=opposite_color)
-        print(f"new Match{row[0]} {player1} vs {player2}")
+                    player1=row[3],
+                    player2=row[4],
+                    result=row[5])
+        print(f"new Match{row[0]} {row[3]} vs {row[4]}")
         return match
 
     def update_match_result(self, match_id, result, p1_id, p2_id):
@@ -388,9 +382,9 @@ class TnmtManager:
         
         for pair in pairs:
             query = '''INSERT INTO matches 
-                        (tournament_id, round, player1_id, player2_id)
-                        VALUES (%s, %s, %s, %s) RETURNING id'''
-            id = self.db.execute_query(query, (tournament_id, t.current_round+1, pair[0].id, pair[1].id), commit=True)
+                        (tournament_id, round, player1_id, player2_id, player1_color)
+                        VALUES (%s, %s, %s, %s, %s) RETURNING id'''
+            id = self.db.execute_query(query, (tournament_id, t.current_round+1, pair[0].id, pair[1].id, 'red'), commit=True)
             print(f"ADDED match{id} for t{tournament_id}.{t.current_round}, ({pair[0].name} vs {pair[1].name})")
 
             update_balance_query = '''
