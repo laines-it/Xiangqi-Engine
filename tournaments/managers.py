@@ -197,11 +197,11 @@ class PlayerManager:
                 WHERE id = %s
             """ 
             try:
-                self.db.execute_query(query, (user_id, id), commit=True)
-                return id
-            except:
-                return None
-            
+                self.db.execute_query(query, (user_id, id[0]), commit=True)
+                return id[0]
+            except Exception as e:
+                print(e)
+                
         return None
 
     def get_players(self, tournament_id) -> list[Player]:

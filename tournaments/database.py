@@ -8,13 +8,6 @@ from config import Role
 
 class Database:
     def __init__(self):
-        # self.conn_params = {
-        #     'dbname': os.environ['DB_NAME'],
-        #     'user': os.environ['DB_USER'],
-        #     'password': os.environ['DB_PASSWORD'],
-        #     'host': os.environ['DB_HOST'],
-        #     'port': os.environ['DB_PORT']
-        # }
         self.conn_params = os.environ.get('DATABASE_URL')
         self.init_db()
 
@@ -102,7 +95,7 @@ class Database:
     def add_csv(self):
         with self.connect() as conn:
             with conn.cursor() as cursor:
-                with open('файл.csv', 'r') as f:
+                with open('players.csv', 'r') as f:
                     reader = csv.reader(f)
                     next(reader)
                     for row in reader:

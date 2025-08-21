@@ -77,8 +77,7 @@ def login(next=None):
         if username == '':
             username = request.form['username']
             hashed_password = request.form['password']
-            # hashed_password = bcrypt.hashpw(password, bcrypt.gensalt()).decode('utf8')
-
+            
         error = log_in(username, hashed_password)
         if error:
             return render_template('login.html', error=error)

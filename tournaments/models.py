@@ -43,13 +43,10 @@ class TnmtPlayer(Player):
             for opp_ingo in opponents_ingos
         ]
         
-        # Расчёт среднего скорректированного INGO соперников
         avg_opponents = sum(adjusted_opponents) / len(adjusted_opponents) if adjusted_opponents else 0
         
-        # Расчёт нового INGO на основе результатов турнира
         new_ingo = avg_opponents + 50 - self.points * 100
         
-        # Определение базового коэффициента k
         if total_tournaments > 14:
             k = 4
         elif total_tournaments > 9:
@@ -61,30 +58,26 @@ class TnmtPlayer(Player):
         else:
             k = 0
         
-        # Корректировка k по правилам
         if self.ingo - new_ingo >= 25:
-            k = max(0, k - 1)  # Уменьшение при значительном падении
-        
+            k = max(0, k - 1) 
+
         if total_rounds < 5:
-            k += (5 - total_rounds) * 2  # Увеличение за малое количество партий
+            k += (5 - total_rounds) * 2
         
-        if time_control_category == 'cat1':  # Контроль времени 45-60 минут
+        if time_control_category == 'cat1':  # 45-60 mins
             k += 1
-        elif time_control_category == 'cat2':  # Контроль времени 30-45 минут
+        elif time_control_category == 'cat2':  # 30-45 mins
             k += 2
         
-        # Расчёт обновлённого INGO
         if k == 0:
             updated_ingo = new_ingo
         else:
             updated_ingo = (self.self.ingo * k + new_ingo) / (k + 1)
-        updated_ingo = round(updated_ingo, 1)  # Округление до одного знака
-        
-        # Расчёт российского рейтинга
+        updated_ingo = round(updated_ingo, 1) 
+
         russian_rating = 2750 - 7 * updated_ingo
-        russian_rating = round(russian_rating)  # Округление до целого
+        russian_rating = round(russian_rating)
         
-        # Обновление состояния игрока
         self.ingo = updated_ingo
         self.rating = russian_rating
         
@@ -140,7 +133,7 @@ class Tournament:
 
     def create_pairs(self):
         if self.current_round == 0:
-            # Первый раунд: сортировка по рейтингу
+
             sorted_players = sorted(self.players, key=lambda x: x.rating, reverse=True)
             top = sorted_players[:len(self.players)//2]
             bottom = sorted_players[len(self.players)//2:]
@@ -148,7 +141,7 @@ class Tournament:
             used = [False] * len(bottom)
             
             for p_top in top:
-                # Поиск лучшего соперника по минимальной разнице рейтинга
+
                 min_diff = float('inf')
                 candidate_idx = -1
                 for j, p_bot in enumerate(bottom):
@@ -164,16 +157,15 @@ class Tournament:
                 candidate = bottom[candidate_idx]
                 used[candidate_idx] = True
                 
-                # Определение цвета фигур для минимизации дисбаланса
                 if abs(p_top.color_balance + 1) + abs(candidate.color_balance - 1) <= \
-                abs(p_top.color_balance - 1) + abs(candidate.color_balance + 1):
-                    pairs.append((p_top, candidate))  # p_top белые
+                   abs(p_top.color_balance - 1) + abs(candidate.color_balance + 1):
+                    pairs.append((p_top, candidate))
                 else:
-                    pairs.append((candidate, p_top))  # candidate белые
+                    pairs.append((candidate, p_top))
             
             return pairs
         else:
-            # Последующие раунды: сортировка по очкам и рейтингу
+
             sorted_players = sorted(self.players, key=lambda x: (-x.points, -x.rating))
             n = len(sorted_players)
             used = [False] * n
@@ -186,7 +178,6 @@ class Tournament:
                 p1 = sorted_players[i]
                 candidates = []
                 
-                # Поиск возможных соперников
                 for j in range(i+1, n):
                     if not used[j]:
                         p2 = sorted_players[j]
@@ -196,7 +187,6 @@ class Tournament:
                             candidates.append((j, p2, point_diff, rating_diff))
                 
                 if not candidates:
-                    # Если не нашли подходящего соперника, ищем любого доступного
                     for j in range(i+1, n):
                         if not used[j]:
                             p2 = sorted_players[j]
@@ -206,18 +196,16 @@ class Tournament:
                     if not candidates:
                         continue
                 
-                # Выбор лучшего кандидата
                 candidates.sort(key=lambda x: (x[2], x[3]))
                 best_idx, p2, _, _ = candidates[0]
                 used[i] = True
                 used[best_idx] = True
                 
-                # Определение цвета фигур
                 if abs(p1.color_balance + 1) + abs(p2.color_balance - 1) <= \
-                abs(p1.color_balance - 1) + abs(p2.color_balance + 1):
-                    pairs.append((p1, p2))  # p1 белые
+                   abs(p1.color_balance - 1) + abs(p2.color_balance + 1):
+                    pairs.append((p1, p2))
                 else:
-                    pairs.append((p2, p1))  # p2 белые
+                    pairs.append((p2, p1))
             
             return pairs
         

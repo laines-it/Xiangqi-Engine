@@ -10,7 +10,7 @@ game_logic/app.py
 tournaments/analytics_script.py
 
 #Config
-tournaments/.env
+tournaments/.env    
 tournaments/data.csv
 tournaments/tournaments.db
 

@@ -47,29 +47,14 @@ header {
 .logo {
   display: flex;
   align-items: center;
-  gap: 12px;
 }
 
 .logo-icon {
-  width: 45px;
-  height: 45px;
-  background: var(--gold);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  color: var(--dark);
-  text-decoration: none;
-  font-weight: bold;
-  box-shadow: 0 0 15px rgba(255, 183, 0, 0.5);
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0% { box-shadow: 0 0 15px rgba(255, 183, 0, 0.5); }
-  50% { box-shadow: 0 0 25px rgba(255, 183, 0, 0.8); }
-  100% { box-shadow: 0 0 15px rgba(255, 183, 0, 0.5); }
+  width: 6rem;
+  height: 6rem;
+  background-image: url('image.svg');
+  background-size: contain;
+  background-repeat: no-repeat;
 }
 
 .logo-text {
@@ -82,7 +67,6 @@ header {
   text-shadow: 2px 2px 4px var(--shadow);
 }
 
-/* Навигация */
 .nav-links {
   display: flex;
   gap: 2.5rem;
