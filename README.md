@@ -1,7 +1,26 @@
-# Xiangqi (Chinese Chess) Python Project
+# Engine [Developing online game platform] (директория game_logic/)
 
-A Python implementation of Xiangqi (Chinese Chess) featuring an AI opponent using the Minimax algorithm with Alpha-Beta pruning.
+Движок для шахматной игры реализован на основе минмаксного метода с альфа-бета оптимизацией (найти можно в файле engine.py для Python и clang/engine.cpp для C++)
+Программа изначально была полностью написана на Python, но вследствие низкой скорости работы, была целиком переписана на C++. К сожалению, даже скорость языка C++ не смогла уменьшить время работы программы до удовлетворительных значений.
+В будущем планируется распараллеливание программы средствами языка C++.
 
-## Project Description
+# Xiangqi Tournament Management System (директория tournaments/)
 
-This project simulates a game of Xiangqi (Chinese Chess) with a command-line interface. It includes an AI engine capable of making strategic decisions using the Minimax algorithm with Alpha-Beta pruning for optimization. The game supports saving/loading states, move validation, and board visualization with ANSI-colored pieces.
+Веб-приложение для управления турнирами с системой регистрации пользователей, создания турниров и отслеживания результатов.
+
+## Основные возможности
+
+- **Управление турнирами**: создание, редактирование и удаление турниров
+- **Система пользователей**: регистрация, авторизация, ролевая модель (администраторы/пользователи)
+- **Управление игроками**: добавление игроков, привязка к пользователям
+- **Генерация пар**: автоматическое формирование пар для раундов. Системы: Швейцарская, ...
+- **Ввод результатов**: система записи результатов матчей
+- **Рейтинги и статистика**: таблицы результатов, коэффициенты Бухгольца
+
+## Технологический стек
+
+- **Backend**: Flask (Python)
+- **База данных**: PostgreSQL (без ORM)
+- **Аутентификация**: сессии Flask с bcrypt для хеширования паролей
+- **Шаблоны**: Jinja2
+- **Frontend**: HTML, CSS, JavaScript
