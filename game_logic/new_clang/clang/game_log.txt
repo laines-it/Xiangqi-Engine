@@ -1,0 +1,2 @@
+MOVE: RED G to (4, 1)
+MOVE: BLACK C to (1, 0)
