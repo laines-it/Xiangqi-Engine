@@ -109,7 +109,7 @@ class Engine:
                beta: float,
                maximizing_player: bool) -> float:
         return board.ghost_test(from_pos, to_pos, 
-                                lambda x, alter: self.minimax_wrapper(x, depth-1, not maximizing_player, alpha, beta))
+                                lambda x: self.minimax_wrapper(x, depth-1, not maximizing_player, alpha, beta))
 
     def minimax_wrapper(self,
                        board: Board,

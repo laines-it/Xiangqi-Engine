@@ -285,6 +285,7 @@ class Board:
             for rows in self.squares:
                 for square in rows:
                     total_value += square.get_state().value * (control_multiplier if square.get_piece() is None else (control_multiplier+attack_bonus))
+        
         return total_value
 
     def update_evaluation(self, eval_set: EvaluateSet, describe=False):

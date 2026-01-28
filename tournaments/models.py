@@ -11,8 +11,8 @@ class User:
         self.pw = pw
     
     def auth(self, password:str):
-        if self.pw == password:
-            return True
+        # if self.pw == password:
+        #     return True
         return bcrypt.checkpw(password.encode('utf8'), self.pw.encode('utf8'))
 
 class Player:

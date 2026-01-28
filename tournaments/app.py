@@ -65,6 +65,7 @@ def index():
 @app.route('/analytics')
 def exec_query():
     db.restart()
+    db.add_csv()
     # rows = db.execute_query(os.environ.get('QUERY'), fetchall=True)
     # db.print_table(HEADERS['user'], rows)
     return redirect(url_for('index'))

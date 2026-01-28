@@ -47,11 +47,22 @@ class Game:
         return self.board
 
     def puzzle(self):
-        self.board.add_piece(General(Color.RED, Vector(4,0)))
-        self.board.add_piece(General(Color.BLACK, Vector(5,9)))
-        self.board.add_piece(Soldier(Color.RED, Vector(4,7)))
-        self.board.add_piece(Soldier(Color.RED, Vector(3,9)))
-        # self.board.add_piece(Chariot(Color.RED, Vector(5,2)))
+        # # Красные фигуры (нижняя часть доски)
+        # self.board.add_piece(General(Color.RED, Vector(4, 0)))  # Генерал
+        # self.board.add_piece(Advisor(Color.RED, Vector(3, 0)))  # Советник
+        self.board.add_piece(Chariot(Color.RED, Vector(2, 3)))  # Ладья вышла в центр
+        # self.board.add_piece(Horse(Color.RED, Vector(7, 3)))    # Конь активно участвует
+        # self.board.add_piece(Cannon(Color.RED, Vector(7, 2)))   # Пушка на своей половине
+        # self.board.add_piece(Soldier(Color.RED, Vector(3, 7)))  # Солдат прорвался
+
+        # # Черные фигуры (верхняя часть доски)
+        # self.board.add_piece(General(Color.BLACK, Vector(5, 9)))  # Генерал
+        # self.board.add_piece(Advisor(Color.BLACK, Vector(4, 8)))  # Советник защищает
+        # # self.board.add_piece(Chariot(Color.BLACK, Vector(8, 7)))  # Ладья контролирует фланг
+        # self.board.add_piece(Horse(Color.BLACK, Vector(1, 7)))    # Конь в защите
+        # self.board.add_piece(Cannon(Color.BLACK, Vector(1, 8)))   # Пушка на задней линии
+        # self.board.add_piece(Soldier(Color.BLACK, Vector(4, 5)))  # Солдат в центре
+        # # self.board.add_piece(Chariot(Color.RED, Vector(5,2)))
         return self.board
 
     def create_queue(self):
@@ -108,7 +119,6 @@ class Game:
     def print(self, deep_eval=None):
         if deep_eval:
             print(f"Deep evaluation: {deep_eval:.2f}")
-        print(f"Evaluation: {self.evaluate():.2f}")
         print(f"{self.current_player_color} to move")
         #self.board.print_control()
         return self.board.print_visual()
@@ -222,6 +232,8 @@ class Game:
         self.print()
 
 if __name__ == "__main__":
-    ev = EvaluateSet(10,0,0,0)
-    g = Game(ev, puzzle=1, load=False, debug=False)
-    print(g.engine_best_move(Engine(ev,4,debug=True)))
+    ev = EvaluateSet(10,0,1,1)
+    g = Game(ev, puzzle=0, load=False, debug=False)
+    g.board.evaluate(ev)
+    g.board.print_control()
+    print(g.engine_best_move(Engine(ev,2,debug=True)))

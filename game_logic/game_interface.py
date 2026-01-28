@@ -61,7 +61,7 @@ class GameInterface:
         human1 = Human(name="Alice", color=Color.RED, profile_url="https://example.com/alice")
         human2 = Human(name="PALICE", color=Color.BLACK, profile_url="https://example.com/alice")
     
-        bot_engine1 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=1, control_multiplier=1), depth=4)
+        bot_engine1 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=100, mobility_multiplier=1, control_multiplier=1), depth=2)
         ai1 = Bot(
             engine=bot_engine1,
             color=Color.RED,
@@ -69,7 +69,7 @@ class GameInterface:
             strategy_description="Prefers attacking moves"
         )
 
-        bot_engine2 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=1, control_multiplier=1), depth=4)
+        bot_engine2 = Engine(EvaluateSet(value_multiplier=100, attack_bonus=0, mobility_multiplier=1, control_multiplier=100), depth=2)
         ai2 = Bot(
             engine=bot_engine2,
             name="Defensive AI",

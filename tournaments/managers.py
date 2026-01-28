@@ -201,7 +201,7 @@ class PlayerManager:
                 return id[0]
             except Exception as e:
                 print(e)
-                
+
         return None
 
     def get_players(self, tournament_id) -> list[Player]:

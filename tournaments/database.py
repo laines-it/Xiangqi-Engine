@@ -105,7 +105,7 @@ class Database:
                         """, row)
 
     def connect(self):
-        return psycopg2.connect(self.conn_params, sslmode='require', cursor_factory=DictCursor)
+        return psycopg2.connect(self.conn_params, sslmode='disable', cursor_factory=DictCursor)
 
     def execute_query(self, query, params=(), fetchone=False, fetchall=False, commit=False):
         with self.connect() as conn:
